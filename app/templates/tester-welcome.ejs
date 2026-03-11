@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to Expirely Beta Testing!</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background-color: #0a0a0f;
+      color: #e2e8f0;
+    }
+
+    .wrapper {
+      max-width: 620px;
+      margin: 40px auto;
+      background: #0a0a0f;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+      border: 1px solid rgba(16, 185, 129, 0.15);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%);
+      padding: 48px 40px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: -60px;
+      width: 200px; height: 200px;
+      background: rgba(16,185,129,0.15);
+      border-radius: 50%;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -80px; right: -40px;
+      width: 250px; height: 250px;
+      background: rgba(16,185,129,0.10);
+      border-radius: 50%;
+    }
+
+    .logo-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+    .logo-text {
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #d1fae5;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 50px;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header h1 {
+      font-size: 30px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.25;
+      position: relative;
+      z-index: 1;
+    }
+    .header h1 span { color: #6ee7b7; }
+
+    /* ── Body ── */
+    .body {
+      background: #111118;
+      padding: 40px 40px 32px;
+    }
+
+    .greeting {
+      font-size: 17px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+    }
+    .greeting strong { color: #e2e8f0; font-weight: 700; }
+
+    .intro-text {
+      font-size: 15px;
+      color: #94a3b8;
+      line-height: 1.7;
+      margin-bottom: 32px;
+    }
+
+    /* ── Info card ── */
+    .info-card {
+      background: #1a1a27;
+      border: 1px solid rgba(16,185,129,0.2);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .info-card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #10b981;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 14px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { font-size: 13px; color: #64748b; }
+    .info-value { font-size: 13px; font-weight: 600; color: #e2e8f0; }
+
+    /* ── What to test ── */
+    .section-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 14px;
+    }
+
+    .feature-list {
+      list-style: none;
+      margin-bottom: 28px;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+    .feature-list li:last-child { border-bottom: none; }
+    .feature-icon {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      background: rgba(16,185,129,0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── CTA ── */
+    .cta-section {
+      text-align: center;
+      margin: 32px 0;
+    }
+    .cta-btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 15px 40px;
+      border-radius: 50px;
+      letter-spacing: 0.3px;
+      box-shadow: 0 8px 24px rgba(16,185,129,0.35);
+    }
+
+    /* ── Tips box ── */
+    .tips-box {
+      background: #0d1f17;
+      border-left: 3px solid #10b981;
+      border-radius: 0 10px 10px 0;
+      padding: 18px 20px;
+      margin-bottom: 28px;
+    }
+    .tips-box p {
+      font-size: 13px;
+      color: #6ee7b7;
+      line-height: 1.6;
+    }
+    .tips-box strong { color: #34d399; }
+
+    /* ── Footer ── */
+    .footer {
+      background: #0d0d14;
+      padding: 28px 40px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .footer-brand {
+      font-size: 15px;
+      font-weight: 700;
+      color: #10b981;
+      margin-bottom: 8px;
+    }
+    .footer-text {
+      font-size: 12px;
+      color: #475569;
+      line-height: 1.6;
+    }
+    .footer-text a {
+      color: #10b981;
+      text-decoration: none;
+    }
+    .social-row {
+      margin: 14px 0;
+    }
+    .social-icon {
+      display: inline-block;
+      width: 32px; height: 32px;
+      background: #1a1a27;
+      border-radius: 8px;
+      line-height: 32px;
+      font-size: 14px;
+      margin: 0 4px;
+      text-decoration: none;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(16,185,129,0.3), transparent);
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-container">
+        <span class="logo-icon">⏳</span>
+        <span class="logo-text">Expirely</span>
+      </div>
+      <div><span class="badge">🚀 Beta Tester</span></div>
+      <h1>You're In! <span>Welcome to<br/>the Testing Crew</span></h1>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+
+      <p class="greeting">Hey <strong><%= username %></strong>,</p>
+      <p class="intro-text">
+        We're absolutely thrilled to have you on board as one of our <strong style="color:#10b981">early beta testers</strong>!
+        You're among a select group of people helping us shape Expirely into the best expiry tracking app out there.
+        Your feedback is gold to us — thank you for believing in us! 🙏
+      </p>
+
+      <!-- Registration Details -->
+      <div class="info-card">
+        <div class="info-card-title">📋 Your Registration Details</div>
+        <div class="info-row">
+          <span class="info-label">Name</span>
+          <span class="info-value">&nbsp;<%= username %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email</span>
+          <span class="info-value">&nbsp;<%= email %></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span class="info-value" style="color:#10b981;">&nbsp; Active Beta Tester</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Registered On</span>
+          <span class="info-value">&nbsp;<%= registeredAt %></span>
+        </div>
+      </div>
+
+      <!-- What to Test -->
+      <p class="section-title">🧪 What You'll Be Testing</p>
+      <ul class="feature-list">
+        <li>
+          <span class="feature-icon">📦&nbsp;</span>
+          <span><strong style="color:#e2e8f0">Add & Track Items</strong> — Add your everyday products and set their expiry dates. Test if reminders arrive on time.</span>
+        </li>
+        <li>
+          <span class="feature-icon">🔔&nbsp;</span>
+          <span><strong style="color:#e2e8f0">Smart Notifications</strong> — Check if you receive push notifications before items expire. Report any delays.</span>
+        </li>
+        <li>
+          <span class="feature-icon">🤖&nbsp;</span>
+          <span><strong style="color:#e2e8f0">AI Suggestions</strong> — Try the AI scan & recommendation feature. Tell us how accurate it feels.</span>
+        </li>
+        <li>
+          <span class="feature-icon">📊&nbsp;</span>
+          <span><strong style="color:#e2e8f0">Dashboard & Reports</strong> — Explore your stats and usage reports. Is the UI intuitive?</span>
+        </li>
+        <li>
+          <span class="feature-icon">🌙&nbsp;</span>
+          <span><strong style="color:#e2e8f0">Dark / Light Mode</strong> — Switch themes and check for any visual glitches across screens.</span>
+        </li>
+      </ul>
+
+      <div class="divider"></div>
+
+      <!-- Tips -->
+      <div class="tips-box">
+        <p>
+          <strong>💡 Pro Tip:</strong> The best feedback is <em>specific</em>! When something breaks or feels odd,
+          note the exact screen, what you tapped, and the result you expected vs. what happened.
+          Even small bugs caught early make a huge difference. You're our superhero! 🦸
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-brand">⏳ Expirely</div>
+      <div class="social-row">
+        <span class="social-icon">📧</span>
+        <span class="social-icon">🐦</span>
+        <span class="social-icon">📸</span>
+      </div>
+      <p class="footer-text">
+        You're receiving this because you signed up as a beta tester for Expirely.<br/>
+        If this was a mistake, just ignore this email — no action needed.<br/><br/>
+        &copy; <%= new Date().getFullYear() %> Expirely. Made with ❤️ for a smarter kitchen.
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>

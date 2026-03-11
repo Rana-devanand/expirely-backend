@@ -20,7 +20,7 @@ router.use("/upload", uploadRoutes);
 router.use("/ai", aiRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/notifications", notificationRoutes);
-router.use("/testers", testerRoutes);
+router.use("/tester", testerRoutes);
 router.use("/reports", reportRoutes);
 
 export default router;
