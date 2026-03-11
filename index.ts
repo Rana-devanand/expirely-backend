@@ -14,6 +14,7 @@ import { errorHandler } from "./app/common/middleware/error-handler.middleware";
 import { initPassport } from "./app/common/service/passport-jwt.service";
 import { schedulerService } from "./app/common/service/scheduler.service";
 import { notificationWorker } from "./app/modules/notification/notification.worker";
+import { initFirebase } from "./app/common/service/fcm.service";
 
 const app: Express = express();
 const port = Number(process.env.PORT) || 5000;
@@ -32,6 +33,9 @@ app.use((req, res, next) => {
 
 // ── App Initialization logic
 const setupApp = () => {
+  // Firebase Admin SDK Initialization
+  initFirebase();
+
   // Passport Initialization
   initPassport();
   app.use(passport.initialize());
@@ -41,6 +45,7 @@ const setupApp = () => {
     void notificationWorker.start();
   } else {
     schedulerService.init();
+    void notificationWorker.start(); // ✅ Worker must run in prod too to process queue
   }
 
   // ── Routes

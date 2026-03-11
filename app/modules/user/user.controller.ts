@@ -215,6 +215,28 @@ export class UserController {
       });
     }
   }
+  async updateFcmToken(req: Request, res: Response) {
+    try {
+      const user = req.user as any;
+      const userId = user?.id;
+      if (!userId) throw new Error("User not authenticated");
+
+      const { fcmToken } = req.body;
+      if (!fcmToken) throw new Error("fcmToken is required");
+
+      await userService.saveFcmToken(userId, fcmToken);
+
+      res.status(200).json({
+        success: true,
+        message: "FCM token updated successfully",
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to update FCM token",
+      });
+    }
+  }
 }
 
 export const userController = new UserController();

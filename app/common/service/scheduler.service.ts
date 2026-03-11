@@ -4,25 +4,27 @@ import { queueService } from "./queue.service";
 
 export class SchedulerService {
   init() {
-    // 1. Morning Scan: 9 AM (Items expiring in 3 days)
+    const cronOptions = { timezone: "Asia/Kolkata" };
+
+    // 1. Morning Scan: 9 AM IST (Items expiring in 3 days)
     cron.schedule("0 9 * * *", () => {
       console.log("⏰ Running 9 AM Morning Scan...");
       this.scanExpiringItems(3);
-    });
+    }, cronOptions);
 
-    // 2. Afternoon Scan: 1 PM (Items expiring in 7 days)
+    // 2. Afternoon Scan: 1 PM IST (Items expiring in 7 days)
     cron.schedule("0 13 * * *", () => {
       console.log("⏰ Running 1 PM Afternoon Scan...");
       this.scanExpiringItems(7);
-    });
+    }, cronOptions);
 
-    // 3. Evening Scan: 8 PM (Recap of items added today)
+    // 3. Evening Scan: 8 PM IST (Recap of items added today)
     cron.schedule("0 20 * * *", () => {
       console.log("⏰ Running 8 PM Evening Recap Scan...");
       this.scanNewItemsToday();
-    });
+    }, cronOptions);
 
-    console.log("✅ Scheduler Service Initialized.");
+    console.log("✅ Scheduler Service Initialized (Timezone: Asia/Kolkata).");
   }
 
   private async scanExpiringItems(days: number) {

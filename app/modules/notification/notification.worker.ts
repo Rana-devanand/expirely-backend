@@ -1,6 +1,7 @@
 import { queueService } from "../../common/service/queue.service";
 import { groqService } from "../../common/service/groq.service";
 import { supabase } from "../../config/supabase";
+import { sendPushNotification } from "../../common/service/fcm.service";
 
 export class NotificationWorker {
   private isRunning = false;
@@ -18,7 +19,7 @@ export class NotificationWorker {
           await this.processMessage(message);
           await queueService.archive(message.msgid);
         } else {
-          // No messages, wait a bit
+          // No messages, wait 5 seconds before polling again
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }
       } catch (error) {
@@ -40,12 +41,12 @@ export class NotificationWorker {
     let body = "";
 
     try {
+      // ── 1. Generate notification content via Groq AI ──
       if (type === "EXPIRY_WARNING") {
         const messages = await groqService.generateExpiryAlertMessages(
           product.name,
           product.category || "General",
         );
-
         const stage = days === 7 ? "sevenDays" : "threeDays";
         title = messages[stage].title;
         body = messages[stage].body;
@@ -55,8 +56,8 @@ export class NotificationWorker {
         body = recap.body;
       }
 
-      // Save to notification table (this is the "delivery")
-      const { error } = await supabase.from("notifications").insert([
+      // ── 2. Save to Supabase notifications table ──
+      const { error: dbError } = await supabase.from("notifications").insert([
         {
           user_id: userId,
           title,
@@ -66,11 +67,32 @@ export class NotificationWorker {
         },
       ]);
 
-      if (error) throw error;
-      console.log(`✅ Notification delivered to user ${userId}`);
+      if (dbError) throw dbError;
+      console.log(`✅ Notification saved to DB for user ${userId}`);
+
+      // ── 3. Fetch user's FCM token & send push notification ──
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("fcm_token")
+        .eq("id", userId)
+        .single();
+
+      if (userError) {
+        console.warn(`⚠️ Could not fetch user ${userId} for FCM: ${userError.message}`);
+      } else if (userData?.fcm_token) {
+        const pushData: Record<string, string> = {
+          type,
+          userId,
+          ...(product && { productId: product.id, productName: product.name }),
+        };
+
+        await sendPushNotification(userData.fcm_token, title, body, pushData);
+      } else {
+        console.log(`ℹ️ User ${userId} has no FCM token — skipping push.`);
+      }
     } catch (error) {
       console.error(`❌ Failed to process job ${job.msgid}:`, error);
-      throw error; // Let the worker catch it to retry or stay in queue
+      throw error;
     }
   }
 }

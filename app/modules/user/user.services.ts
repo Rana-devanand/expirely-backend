@@ -447,6 +447,16 @@ export class UserService {
     if (error) throw error;
     return { success: true, message: `User status updated to ${status}` };
   }
+
+  async saveFcmToken(userId: string, fcmToken: string) {
+    const { error } = await supabase
+      .from("users")
+      .update({ fcm_token: fcmToken, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+
+    if (error) throw error;
+    return { success: true };
+  }
 }
 
 export const userService = new UserService();

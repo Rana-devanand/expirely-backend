@@ -23,5 +23,10 @@ router.put(
   roleAuth(["ADMIN", "USER"]),
   userController.changePassword,
 );
+router.post(
+  "/fcm-token",
+  roleAuth(["ADMIN", "USER"]),
+  userController.updateFcmToken,
+);
 
 export default router;
