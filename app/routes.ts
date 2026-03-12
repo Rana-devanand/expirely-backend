@@ -9,6 +9,7 @@ import aiRoutes from "./modules/ai/ai.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
 import testerRoutes from "./modules/tester/tester.routes";
 import reportRoutes from "./modules/report/report.routes";
+import cronRoutes from "./modules/notification/cron.routes";
 
 // routes
 const router = express.Router();
@@ -22,5 +23,6 @@ router.use("/dashboard", dashboardRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/tester", testerRoutes);
 router.use("/reports", reportRoutes);
+router.use("/cron", cronRoutes);
 
 export default router;

@@ -11,5 +11,19 @@
       "src": "/(.*)",
       "dest": "index.ts"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/morning-scan",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/afternoon-scan",
+      "schedule": "30 7 * * *"
+    },
+    {
+      "path": "/api/cron/evening-scan",
+      "schedule": "30 14 * * *"
+    }
   ]
 }

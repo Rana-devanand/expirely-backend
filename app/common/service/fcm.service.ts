@@ -61,7 +61,7 @@ export const sendPushNotification = async (
         priority: "high",
         notification: {
           sound: "default",
-          channelId: "expiry_alerts",
+          channelId: "expiry-alerts",
           icon: "ic_launcher",
           color: "#10b981",
         },

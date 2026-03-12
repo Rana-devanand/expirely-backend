@@ -41,12 +41,12 @@ const setupApp = () => {
   app.use(passport.initialize());
 
   if (process.env.NODE_ENV !== "production") {
+    // Local dev: use node-cron + worker for convenience
     schedulerService.init();
     void notificationWorker.start();
-  } else {
-    schedulerService.init();
-    void notificationWorker.start(); // ✅ Worker must run in prod too to process queue
   }
+  // Production (Vercel): Cron jobs are handled via /api/cron/* routes
+  // configured in vercel.json. No persistent process needed.
 
   // ── Routes
   app.use("/api", routes);
