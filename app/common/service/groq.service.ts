@@ -334,6 +334,53 @@ export class GroqService {
     }
   }
 
+  async estimateExpiryFromMetadata(metadata: { name: string; category: string; ingredients?: string; entryDate?: string }) {
+    try {
+      const prompt = `Estimate the typical shelf life and a realistic expiry date for this product.
+      
+      Product Name: "${metadata.name}"
+      Category: "${metadata.category}"
+      Ingredients: "${metadata.ingredients || "Unknown"}"
+      First Seen/Entry Date: "${metadata.entryDate || "Today"}"
+      
+      Requirements:
+      1. Analyze the product type (e.g., canned food, medicine, fresh dairy, dried noodles).
+      2. Based on typical shelf life for this category, calculate the "estimatedExpiryDate" (YYYY-MM-DD).
+      3. Provide a "shelfLifeMonths" (approximate number).
+      4. Provide a "confidence" score (0-1) based on how common the product is.
+      5. Add "reasoning" (briefly explain why this date was chosen).
+      
+      Return as a JSON object:
+      {
+        "estimatedExpiryDate": "YYYY-MM-DD",
+        "shelfLifeMonths": 0,
+        "confidence": 0,
+        "reasoning": "...",
+        "storageTip": "..."
+      }`;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+      });
+
+      const content = chatCompletion.choices[0]?.message?.content;
+      if (!content) throw new Error("Failed to estimate expiry");
+
+      return JSON.parse(content);
+    } catch (error) {
+      console.error("Groq Estimation Error:", error);
+      return {
+        estimatedExpiryDate: null,
+        shelfLifeMonths: 6,
+        confidence: 0.1,
+        reasoning: "Fallback to default category average due to AI error.",
+        storageTip: "Store in a cool, dry place."
+      };
+    }
+  }
+
   async generateHealthInsight(productName: string, category: string) {
     try {
       const prompt = `Analyze the health benefits and potential concerns for "${productName}" (Category: ${category}). 

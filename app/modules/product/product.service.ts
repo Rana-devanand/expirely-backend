@@ -130,15 +130,54 @@ export const fetchByBarcode = async (barcode: string) => {
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
     );
     const data: any = await response.json();
-    console.log(data)
+    
     if (data.status === 1) {
       const p = data.product;
-      return {
+      
+      // Robust Image Extraction
+      const imageUrl = 
+        p.image_url || 
+        p.image_front_url || 
+        p.image_small_url || 
+        p.image_front_small_url ||
+        p.selected_images?.front?.display?.en ||
+        p.selected_images?.front?.display?.fr ||
+        (p.images && (Object.values(p.images) as any[]).find((img: any) => img.sizes?.full?.url)?.sizes?.full?.url) ||
+        null;
+
+      const metadata = {
         name: p.product_name || p.generic_name || "Unknown Product",
         brand: p.brands || "",
         category: p.categories?.split(",")[0] || "Other",
-        imageUrl: p.image_url || p.image_front_url || null,
+        imageUrl: imageUrl,
         barcode: barcode,
+        expirationDate: p.expiration_date || null,
+        ingredients: p.ingredients_text || "",
+        entryDate: p.entry_dates_tags?.[0] || null
+      };
+
+      // If exact expiration date is missing, let AI estimate it
+      if (!metadata.expirationDate) {
+        const aiEstimation = await groqService.estimateExpiryFromMetadata({
+          name: metadata.name,
+          category: metadata.category,
+          ingredients: metadata.ingredients,
+          entryDate: metadata.entryDate
+        });
+        
+        return {
+          ...metadata,
+          estimatedExpiry: aiEstimation.estimatedExpiryDate,
+          aiVerified: true,
+          confidence: aiEstimation.confidence,
+          storageTip: aiEstimation.storageTip
+        };
+      }
+
+      return {
+        ...metadata,
+        aiVerified: false,
+        confidence: 1.0
       };
     }
     return null;
