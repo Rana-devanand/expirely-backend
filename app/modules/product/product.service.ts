@@ -130,7 +130,7 @@ export const fetchByBarcode = async (barcode: string) => {
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
     );
     const data: any = await response.json();
-
+    console.log(data)
     if (data.status === 1) {
       const p = data.product;
       return {

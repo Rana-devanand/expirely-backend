@@ -7,5 +7,6 @@ const router = Router();
 router.use(roleAuth(["ADMIN"]));
 
 router.get("/", reportController.getReports);
+router.get("/export/:type/:format", reportController.downloadReport);
 
 export default router;

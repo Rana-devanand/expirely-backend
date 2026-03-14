@@ -14,7 +14,7 @@ const mapRowToCategory = (row: any): ICategory => {
   };
 };
 
-export const createCategory = async (userId: string, data: ICreateCategory) => {
+export const createCategory = async (userId: string | null, data: ICreateCategory) => {
   const newCategory = {
     user_id: userId,
     name: data.name,
@@ -84,7 +84,7 @@ export const getAllCategories = async (userId: string) => {
   const { data, error } = await supabase
     .from("categories")
     .select("*")
-    .eq("user_id", userId)
+    .or(`user_id.eq.${userId},user_id.is.null`)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);

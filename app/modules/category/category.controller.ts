@@ -7,14 +7,20 @@ import { notificationService } from "../notification/notification.service";
 
 export const createCategory = asyncHandler(
   async (req: Request, res: Response) => {
-    const userId = (req.user as any).id as string;
-    const result = await categoryService.createCategory(userId, req.body);
+    const user = req.user as any;
+    const userId = user.id as string;
+    const role = user.role as string;
+
+    // If admin, create as global category (userId = null)
+    const targetUserId = role === "ADMIN" ? null : userId;
+    
+    const result = await categoryService.createCategory(targetUserId, req.body);
 
     // Trigger notification
     await notificationService.createNotification(
       userId,
       "ADD_CATEGORY",
-      { categoryName: result.name },
+      { categoryName: result.name, isGlobal: role === "ADMIN" },
       "success",
     );
 

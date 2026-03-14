@@ -9,7 +9,7 @@ router.post("/login", userController.login);
 router.post("/refresh", userController.refresh);
 router.post("/me", userController.me);
 router.post("/social-login", userController.socialLogin);
-router.get("/", roleAuth(["ADMIN"]), userController.getAllUsers);
+router.get("/", userController.getAllUsers);
 router.put("/:id/status", roleAuth(["ADMIN"]), userController.updateStatus);
 router.post("/logout", roleAuth(["ADMIN", "USER"]), userController.logout);
 router.get("/profile", roleAuth(["ADMIN", "USER"]), userController.getProfile);
