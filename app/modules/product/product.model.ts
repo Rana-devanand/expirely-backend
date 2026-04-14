@@ -13,6 +13,7 @@ export interface IProduct {
   quantity: number;
   progress?: number;
   notes?: string;
+  ingredients?: string;
   is_consumed: boolean;
   created_at: Date | string;
   updated_at: Date | string;
@@ -33,6 +34,7 @@ export interface ICreateProduct {
   qty?: number;
   progress?: number;
   notes?: string;
+  ingredients?: string;
 }
 
 export interface IUpdateProduct {
@@ -51,5 +53,6 @@ export interface IUpdateProduct {
   qty?: number;
   progress?: number;
   notes?: string;
+  ingredients?: string;
   is_consumed?: boolean;
 }

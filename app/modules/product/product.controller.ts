@@ -31,10 +31,11 @@ export const updateProduct = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = (req.user as any).id as string;
     const productId = req.params.id as string;
+    const { ingredients, ...rest } = req.body;
     const result = await productService.updateProduct(
       userId,
       productId,
-      req.body,
+      { ...rest, ingredients },
     );
 
     // Trigger notification
@@ -124,6 +125,13 @@ export const extractDatesFromImage = asyncHandler(
 export const getAdminProducts = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await productService.getAllAdminProducts();
+    res.send(createResponse(result));
+  },
+);
+export const getDynamicInsight = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = (req.user as any).id as string;
+    const result = await productService.getDynamicInventoryInsight(userId);
     res.send(createResponse(result));
   },
 );

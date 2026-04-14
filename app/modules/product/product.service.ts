@@ -1,5 +1,19 @@
 import { supabase } from "../../config/supabase";
 import { IProduct, ICreateProduct, IUpdateProduct } from "./product.model";
+import { groqService } from "../../common/service/groq.service";
+
+interface NormalizedProduct {
+  name: string;
+  brand: string;
+  category: string;
+  imageUrl: string | null;
+  barcode: string;
+  expirationDate: string | null;
+  ingredients: string;
+  entryDate: string | null;
+  rawData?: any;
+}
+
 
 const mapRowToProduct = (row: any): any => {
   if (!row) return row;
@@ -18,6 +32,7 @@ const mapRowToProduct = (row: any): any => {
     qty: row.quantity,
     progress: row.progress,
     notes: row.notes,
+    ingredients: row.ingredients,
     is_consumed: row.is_consumed,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -39,6 +54,7 @@ export const createProduct = async (userId: string, data: ICreateProduct) => {
     quantity: data.quantity || (data as any).qty || 1,
     progress: data.progress || null,
     notes: data.notes || null,
+    ingredients: data.ingredients || null,
   };
 
   const { data: createdProduct, error } = await supabase
@@ -76,6 +92,7 @@ export const updateProduct = async (
     dbData.quantity = data.quantity || (data as any).qty;
   if (data.progress !== undefined) dbData.progress = data.progress;
   if (data.notes !== undefined) dbData.notes = data.notes;
+  if (data.ingredients !== undefined) dbData.ingredients = data.ingredients;
   if (data.is_consumed !== undefined) dbData.is_consumed = data.is_consumed;
 
   const { data: updatedProduct, error } = await supabase
@@ -124,58 +141,106 @@ export const getAllProducts = async (userId: string) => {
   return data.map(mapRowToProduct);
 };
 
-export const fetchByBarcode = async (barcode: string) => {
+const fetchFromOpenFoodFacts = async (barcode: string): Promise<NormalizedProduct | null> => {
   try {
-    const response = await fetch(
-      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`,
-    );
-    const data: any = await response.json();
-    
+    const response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${barcode}.json`);
+    const textData = await response.text();
+    let data: any;
+    try { data = JSON.parse(textData); } catch (e) { return null; }
     if (data.status === 1) {
       const p = data.product;
+      const imageUrl = p.image_url || p.image_front_url || p.image_small_url || p.image_front_small_url || p.selected_images?.front?.display?.en || null;
+      let engIngredients = p.ingredients_text_en || p.ingredients_text || "";
+      if (p.ingredients_tags && p.ingredients_tags.length > 0) {
+        engIngredients = p.ingredients_tags.map((t: string) => t.replace('en:', '').replace(/-/g, ' ')).join(', ');
+      }
       
-      // Robust Image Extraction
-      const imageUrl = 
-        p.image_url || 
-        p.image_front_url || 
-        p.image_small_url || 
-        p.image_front_small_url ||
-        p.selected_images?.front?.display?.en ||
-        p.selected_images?.front?.display?.fr ||
-        (p.images && (Object.values(p.images) as any[]).find((img: any) => img.sizes?.full?.url)?.sizes?.full?.url) ||
-        null;
-
-      const metadata = {
+      return {
         name: p.product_name || p.generic_name || "Unknown Product",
         brand: p.brands || "",
         category: p.categories?.split(",")[0] || "Other",
-        imageUrl: imageUrl,
-        barcode: barcode,
+        imageUrl,
+        barcode,
         expirationDate: p.expiration_date || null,
-        ingredients: p.ingredients_text || "",
-        entryDate: p.entry_dates_tags?.[0] || null
+        ingredients: engIngredients,
+        entryDate: p.entry_dates_tags?.[0] || (p.created_t ? new Date(p.created_t * 1000).toISOString().split('T')[0] : null),
+        rawData: p
       };
+    }
+  } catch (error) {
+    console.warn("OpenFoodFacts Error:", error);
+  }
+  return null;
+};
 
+const fetchFromUPCitemdb = async (barcode: string): Promise<NormalizedProduct | null> => {
+  try {
+    const apiKey = process.env.UPCITEMDB_API_KEY;
+    const headers: any = { "Content-Type": "application/json" };
+    if (apiKey) headers["user_key"] = apiKey;
+
+    const response = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${barcode}`, { headers });
+    const textData = await response.text();
+    let data: any;
+    try { data = JSON.parse(textData); } catch (e) { return null; }
+
+    if (data.code === "OK" && data.items?.length > 0) {
+      const item = data.items[0];
+      return {
+        name: item.title || "Unknown Product",
+        brand: item.brand || "",
+        category: item.category || "Other",
+        imageUrl: item.images?.[0] || null,
+        barcode,
+        expirationDate: null, // UPCitemdb doesn't usually provide expiration
+        ingredients: item.description || "",
+        entryDate: null,
+        rawData: item
+      };
+    }
+  } catch (error) {
+    console.warn("UPCitemdb Error:", error);
+  }
+  return null;
+};
+
+export const fetchByBarcode = async (barcode: string) => {
+  try {
+    // Try Open Food Facts first
+    let metadata = await fetchFromOpenFoodFacts(barcode);
+    console.log({metadata})
+    // If not found, try UPCitemdb
+    if (!metadata) {
+      metadata = await fetchFromUPCitemdb(barcode);
+    }
+
+    if (metadata) {
       // If exact expiration date is missing, let AI estimate it
-      if (!metadata.expirationDate) {
+      if (!metadata.expirationDate || metadata.ingredients !== "Translated") {
         const aiEstimation = await groqService.estimateExpiryFromMetadata({
           name: metadata.name,
           category: metadata.category,
           ingredients: metadata.ingredients,
-          entryDate: metadata.entryDate
+          entryDate: metadata.entryDate || undefined,
+          rawData: metadata.rawData
         });
         
+        delete metadata.rawData;
         return {
           ...metadata,
-          estimatedExpiry: aiEstimation.estimatedExpiryDate,
+          expirationDate: null,
+          estimatedExpiry: null,
+          ingredients: (aiEstimation.englishIngredients && aiEstimation.englishIngredients.length > 0) ? aiEstimation.englishIngredients.join(', ') : metadata.ingredients,
           aiVerified: true,
           confidence: aiEstimation.confidence,
           storageTip: aiEstimation.storageTip
         };
       }
 
+      delete metadata.rawData;
       return {
         ...metadata,
+        expirationDate: null,
         aiVerified: false,
         confidence: 1.0
       };
@@ -187,11 +252,15 @@ export const fetchByBarcode = async (barcode: string) => {
   }
 };
 
-import { groqService } from "../../common/service/groq.service";
-
 export const extractDatesFromImage = async (base64Image: string) => {
   return await groqService.extractDatesFromImage(base64Image);
 };
+
+export const getDynamicInventoryInsight = async (userId: string) => {
+  const products = await getAllProducts(userId);
+  return await groqService.generateDynamicInventorySummary(products);
+};
+
 export const getAllAdminProducts = async () => {
   const { data, error } = await supabase
     .from("products")

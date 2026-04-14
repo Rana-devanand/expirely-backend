@@ -334,27 +334,38 @@ export class GroqService {
     }
   }
 
-  async estimateExpiryFromMetadata(metadata: { name: string; category: string; ingredients?: string; entryDate?: string }) {
+  async estimateExpiryFromMetadata(metadata: { name: string; category: string; ingredients?: string; entryDate?: string; rawData?: any }) {
     try {
-      const prompt = `Estimate the typical shelf life and a realistic expiry date for this product.
+      // JSON stringify the raw data but limit it to avoid exceeding token limits
+      const rawDataString = metadata.rawData ? JSON.stringify(metadata.rawData).substring(0, 15000) : "Not available";
+      
+      const prompt = `You are tasked with finding or estimating the expiry date of a product.
       
       Product Name: "${metadata.name}"
       Category: "${metadata.category}"
       Ingredients: "${metadata.ingredients || "Unknown"}"
       First Seen/Entry Date: "${metadata.entryDate || "Today"}"
       
+      Raw JSON Data from OpenFoodFacts/UPC API (truncated):
+      ${rawDataString}
+      
       Requirements:
-      1. Analyze the product type (e.g., canned food, medicine, fresh dairy, dried noodles).
-      2. Based on typical shelf life for this category, calculate the "estimatedExpiryDate" (YYYY-MM-DD).
-      3. Provide a "shelfLifeMonths" (approximate number).
-      4. Provide a "confidence" score (0-1) based on how common the product is.
-      5. Add "reasoning" (briefly explain why this date was chosen).
+      1. Analyze the Raw JSON Data extensively. Look for any fields indicating expiration, shelf life, "best before", "nutritional validity", or dates buried in the tags.
+      2. If you find a specific expiry date buried deeply in the JSON, return it as "exactExpiryDateFound" (YYYY-MM-DD). If you cannot find one, return null.
+      3. Regardless of finding an exact date, estimate the typical shelf life and a realistic expiry date based on the product type (e.g., canned food, medicine, fresh dairy, dried noodles).
+      4. Return "estimatedExpiryDate" (YYYY-MM-DD). If exactExpiryDateFound is found, estimatedExpiryDate can be the same or close.
+      5. Provide a "shelfLifeMonths" (approximate number).
+      6. Provide a "confidence" score (0-1) based on how sure you are. (1.0 if exact date found).
+      7. Translate the full list of ingredients into exactly English. Add them as an array of strings in "englishIngredients".
+      8. Add "reasoning" (briefly explain why this date was chosen or where it was found in the JSON).
       
       Return as a JSON object:
       {
+        "exactExpiryDateFound": "YYYY-MM-DD",
         "estimatedExpiryDate": "YYYY-MM-DD",
         "shelfLifeMonths": 0,
         "confidence": 0,
+        "englishIngredients": ["Ingredient 1", "Ingredient 2"],
         "reasoning": "...",
         "storageTip": "..."
       }`;
@@ -368,13 +379,17 @@ export class GroqService {
       const content = chatCompletion.choices[0]?.message?.content;
       if (!content) throw new Error("Failed to estimate expiry");
 
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      if (!parsed.exactExpiryDateFound) parsed.exactExpiryDateFound = null;
+      return parsed;
     } catch (error) {
       console.error("Groq Estimation Error:", error);
       return {
+        exactExpiryDateFound: null,
         estimatedExpiryDate: null,
         shelfLifeMonths: 6,
         confidence: 0.1,
+        englishIngredients: [],
         reasoning: "Fallback to default category average due to AI error.",
         storageTip: "Store in a cool, dry place."
       };
@@ -416,6 +431,45 @@ export class GroqService {
         consumptionTip: "Balance it with other food groups.",
         healthScore: 7,
       };
+    }
+  }
+  
+  async generateDynamicInventorySummary(products: any[]) {
+    try {
+      const summaryData = products.map(p => ({
+        name: p.name,
+        category: p.category,
+        daysLeft: p.daysLeft,
+        status: p.status
+      }));
+
+      const prompt = `You are a professional nutrition and home management AI assistant. Generate a detailed, insightful, and encouraging report (100-150 words) based on the user's current food inventory.
+      
+      Inventory Data:
+      ${JSON.stringify(summaryData)}
+      
+      Requirements:
+      1. Overview: Summarize the current state of their pantry/fridge.
+      2. Urgency: Highlight specific items that need immediate attention (expiring soon or expired).
+      3. Categorization: Mention if they are doing particularly well in a certain category (e.g., "Your dairy stock is perfectly managed").
+      4. Actionable Advice: Give 1-2 practical tips on how to use the expiring items or improve their storage.
+      5. Tone: Professional, warm, and helpful. Use a few relevant emojis.
+      
+      Return as a JSON object: {"message": "..."}`;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+      });
+
+      const content = chatCompletion.choices[0]?.message?.content;
+      if (!content) throw new Error("Failed to generate inventory insight");
+
+      return JSON.parse(content);
+    } catch (error) {
+      console.error("Groq Inventory Insight Error:", error);
+      return { message: "Your inventory is currently being tracked. Keep an eye on items expiring soon to maintain health and reduce food waste!" };
     }
   }
 
