@@ -4,6 +4,7 @@ import createHttpError from "http-errors";
 import { createResponse } from "../../common/helper/response.helper";
 import * as productService from "./product.service";
 import { notificationService } from "../notification/notification.service";
+import { loggerService } from "../../common/service/logger.service";
 
 export const createProduct = asyncHandler(
   async (req: Request, res: Response) => {
@@ -21,6 +22,13 @@ export const createProduct = asyncHandler(
         expiryDate: result.expiryDate,
       },
       "success",
+    );
+
+    // Log activity
+    await loggerService.log(
+      "ADD_PRODUCT",
+      { productName: result.name, productId: result.id, category: result.category },
+      userId
     );
 
     res.send(createResponse(result, "Product created successfully"));
@@ -59,6 +67,13 @@ export const updateProduct = asyncHandler(
       isConsumedToggle ? "success" : "info",
     );
 
+    // Log activity
+    await loggerService.log(
+      action,
+      { productName: result.name, productId: result.id, category: result.category },
+      userId
+    );
+
     res.send(createResponse(result, "Product updated successfully"));
   },
 );
@@ -79,6 +94,13 @@ export const deleteProduct = asyncHandler(
       "DELETE_PRODUCT",
       { productName: existing.name },
       "error",
+    );
+
+    // Log activity
+    await loggerService.log(
+      "DELETE_PRODUCT",
+      { productName: existing.name, productId: existing.id },
+      userId
     );
 
     res.send(createResponse(result, "Product deleted successfully"));

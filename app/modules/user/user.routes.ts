@@ -9,6 +9,8 @@ router.post("/login", userController.login);
 router.post("/refresh", userController.refresh);
 router.post("/me", userController.me);
 router.post("/social-login", userController.socialLogin);
+router.post("/forgot-password", userController.forgotPassword);
+router.post("/reset-password", userController.resetPassword);
 router.get("/", userController.getAllUsers);
 router.put("/:id/status", roleAuth(["ADMIN"]), userController.updateStatus);
 router.post("/logout", roleAuth(["ADMIN", "USER"]), userController.logout);
@@ -17,6 +19,11 @@ router.put(
   "/profile",
   roleAuth(["ADMIN", "USER"]),
   userController.updateProfile,
+);
+router.delete(
+  "/profile",
+  roleAuth(["ADMIN", "USER"]),
+  userController.deleteAccount,
 );
 router.put(
   "/change-password",
@@ -27,6 +34,11 @@ router.post(
   "/fcm-token",
   roleAuth(["ADMIN", "USER"]),
   userController.updateFcmToken,
+);
+router.get(
+  "/admin/logs",
+  roleAuth(["ADMIN"]),
+  userController.getSystemLogs,
 );
 
 export default router;

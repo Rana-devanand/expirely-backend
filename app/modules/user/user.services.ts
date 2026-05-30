@@ -1,6 +1,7 @@
 import { supabase } from "../../config/supabase";
 import bcrypt from "bcryptjs";
 import { createUserTokens } from "../../common/service/passport-jwt.service";
+import { sendEmail } from "../../common/service/email.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_fallback_secret";
 
@@ -448,6 +449,20 @@ export class UserService {
     return { success: true, message: `User status updated to ${status}` };
   }
 
+  async deleteAccount(userId: string) {
+    // 1. Delete user's products
+    await supabase.from("products").delete().eq("user_id", userId);
+
+    // 2. Delete user's notifications
+    await supabase.from("notifications").delete().eq("user_id", userId);
+
+    // 3. Delete user account
+    const { error } = await supabase.from("users").delete().eq("id", userId);
+
+    if (error) throw error;
+    return { success: true, message: "Account deleted successfully" };
+  }
+
   async saveFcmToken(userId: string, fcmToken: string) {
     const { error } = await supabase
       .from("users")
@@ -456,6 +471,98 @@ export class UserService {
 
     if (error) throw error;
     return { success: true };
+  }
+
+  async forgotPassword(email: string) {
+    // 1. Fetch user by email
+    const { data: user, error: fetchError } = await supabase
+      .from("users")
+      .select("id, username, email, auth_provider")
+      .eq("email", email)
+      .single();
+
+    if (fetchError || !user) {
+      throw new Error("User with this email does not exist");
+    }
+
+    if (user.auth_provider !== "local") {
+      throw new Error(`This account uses ${user.auth_provider} social login. Please sign in using that instead.`);
+    }
+
+    // 2. Generate 6-digit verification code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins validity
+
+    // 3. Save code in database
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        reset_code: resetCode,
+        reset_expiry: resetExpiry,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
+
+    if (updateError) throw updateError;
+
+    // 4. Send email
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Reset Your Expirely Password 🔒",
+        template: "forgot-password",
+        data: {
+          username: user.username || "User",
+          code: resetCode,
+        },
+      });
+      console.log(`✉️ [ForgotPassword] Reset code sent successfully to ${email}`);
+    } catch (emailErr: any) {
+      console.error("❌ [ForgotPassword] Failed to send email:", emailErr.message);
+      throw new Error("Failed to send reset code email. Please try again.");
+    }
+
+    return { success: true, message: "Reset verification code sent successfully!" };
+  }
+
+  async resetPassword(email: string, code: string, newPassword: any) {
+    // 1. Get user with matching email and valid reset code
+    const { data: user, error: fetchError } = await supabase
+      .from("users")
+      .select("id, reset_code, reset_expiry")
+      .eq("email", email)
+      .single();
+
+    if (fetchError || !user) {
+      throw new Error("User not found");
+    }
+
+    if (!user.reset_code || user.reset_code !== code) {
+      throw new Error("Invalid verification code");
+    }
+
+    const expiryTime = new Date(user.reset_expiry).getTime();
+    if (Date.now() > expiryTime) {
+      throw new Error("Verification code has expired");
+    }
+
+    // 2. Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 3. Update password and clear reset fields
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        password: hashedPassword,
+        reset_code: null,
+        reset_expiry: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
+
+    if (updateError) throw updateError;
+
+    return { success: true, message: "Password reset successfully! You can now login with your new password." };
   }
 }
 

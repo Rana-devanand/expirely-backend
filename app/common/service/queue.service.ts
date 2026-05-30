@@ -31,8 +31,9 @@ export class QueueService {
       await pool
         .query(`SELECT pgmq.create('${this.queueName}');`)
         .catch((err) => {
-          // Ignore if already exists error
-          if (!err.message.includes("already exists")) {
+          // Ignore if already exists or already a member of extension error
+          const msg = err.message || "";
+          if (!msg.includes("already exists") && !msg.includes("already a member of")) {
             console.error("Error creating queue:", err);
           }
         });

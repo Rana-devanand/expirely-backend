@@ -36,6 +36,8 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS fcm_token TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS last_login TIMESTAMPTZ;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS reset_code TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS reset_expiry TIMESTAMPTZ;
 
 -- Add constraints if missing (ignoring errors if they already exist)
 DO $$ 
@@ -188,3 +190,20 @@ CREATE POLICY "Public can insert applications" ON public.testers FOR INSERT WITH
 
 DROP POLICY IF EXISTS "Admins can view applications" ON public.testers;
 CREATE POLICY "Admins can view applications" ON public.testers FOR SELECT USING (true);
+
+-- SYSTEM LOGS TABLE
+CREATE TABLE IF NOT EXISTS public.system_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    details JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS for system_logs
+ALTER TABLE public.system_logs ENABLE ROW LEVEL SECURITY;
+
+-- Allow select and delete for all roles since Admin will access it (we can refine it later or allow true for convenience)
+DROP POLICY IF EXISTS "Allow all for system_logs" ON public.system_logs;
+CREATE POLICY "Allow all for system_logs" ON public.system_logs FOR ALL USING (true);
+

@@ -69,4 +69,24 @@ router.get("/evening-scan", async (req: Request, res: Response) => {
   }
 });
 
+// ── Secure FCM push relay endpoint for Supabase Edge Functions ──
+router.post("/send-push", async (req: Request, res: Response) => {
+  if (!verifyCronSecret(req, res)) return;
+
+  try {
+    const { fcmToken, title, body, data } = req.body;
+    if (!fcmToken || !title || !body) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+
+    const { sendPushNotification } = require("../../common/service/fcm.service");
+    const success = await sendPushNotification(fcmToken, title, body, data);
+    res.status(200).json({ success, message: success ? "Push sent successfully." : "Push failed." });
+  } catch (error: any) {
+    console.error("❌ [CRON] Send push failed:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;
+
