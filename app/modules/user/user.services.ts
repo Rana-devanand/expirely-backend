@@ -560,9 +560,75 @@ export class UserService {
       })
       .eq("id", user.id);
 
+
     if (updateError) throw updateError;
 
     return { success: true, message: "Password reset successfully! You can now login with your new password." };
+  }
+
+  async sendFeedback(payload: {
+    userId: string;
+    username: string;
+    email: string;
+    features: string[];
+    rating: number;
+    message: string;
+  }) {
+    const { username, email, features, rating, message } = payload;
+    const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+    const featureList = features.map((f) => `<li>${f}</li>`).join("");
+    const html = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: auto; background: #f9fafb; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb;">
+        <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 28px 32px;">
+          <h1 style="color: #fff; margin: 0; font-size: 22px;">📝 New User Feedback — Expirely</h1>
+          <p style="color: rgba(255,255,255,0.8); margin: 6px 0 0; font-size: 14px;">Someone shared their experience with the app</p>
+        </div>
+        <div style="padding: 28px 32px; background: #ffffff;">
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 13px; width: 120px;">User</td>
+              <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 14px;">${username}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 13px;">Email</td>
+              <td style="padding: 8px 0; color: #111827; font-size: 14px;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 13px;">Rating</td>
+              <td style="padding: 8px 0; color: #f59e0b; font-size: 18px; letter-spacing: 2px;">${stars} (${rating}/5)</td>
+            </tr>
+          </table>
+          <div style="background: #f3f4f6; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+            <p style="color: #374151; font-weight: 600; margin: 0 0 8px; font-size: 13px;">Features Reviewed</p>
+            <ul style="margin: 0; padding-left: 18px; color: #4b5563; font-size: 14px; line-height: 1.8;">
+              ${featureList}
+            </ul>
+          </div>
+          <div style="background: #fffbeb; border-left: 4px solid #f59e0b; border-radius: 4px; padding: 14px 18px;">
+            <p style="color: #374151; font-weight: 600; margin: 0 0 6px; font-size: 13px;">Message</p>
+            <p style="color: #4b5563; margin: 0; font-size: 14px; line-height: 1.7;">${message || "<em>No message provided</em>"}</p>
+          </div>
+        </div>
+        <div style="padding: 16px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; text-align: center;">
+          <p style="color: #9ca3af; font-size: 12px; margin: 0;">Received from the <strong>Expirely</strong> mobile app • ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
+        </div>
+      </div>
+    `;
+
+    const transporter = (await import("nodemailer")).default.createTransport({
+      service: "gmail",
+      auth: { user: process.env.EMAILS, pass: process.env.PASSWORD },
+    });
+
+    await transporter.sendMail({
+      from: `"Expirely App" <${process.env.EMAILS}>`,
+      to: "dev.cloudapp93@gmail.com",
+      subject: `[Expirely Feedback] ${rating}⭐ from ${username}`,
+      html,
+    });
+
+    console.log(`📬 [Feedback] Email sent from ${email} (${username}), rating: ${rating}/5`);
+    return { success: true, message: "Thank you for your feedback!" };
   }
 }
 

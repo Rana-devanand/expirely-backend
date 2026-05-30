@@ -40,5 +40,10 @@ router.get(
   roleAuth(["ADMIN"]),
   userController.getSystemLogs,
 );
+router.post(
+  "/feedback",
+  roleAuth(["ADMIN", "USER"]),
+  userController.sendFeedback,
+);
 
 export default router;

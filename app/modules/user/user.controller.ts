@@ -380,6 +380,34 @@ export class UserController {
       });
     }
   }
+
+  async sendFeedback(req: Request, res: Response) {
+    try {
+      const userId = (req.user as any).id as string;
+      const userEmail = (req.user as any).email as string;
+      const { username, features, rating, message } = req.body;
+      if (!features || !Array.isArray(features) || features.length === 0) {
+        throw new Error("Please select at least one feature");
+      }
+      if (!rating || rating < 1 || rating > 5) {
+        throw new Error("Rating must be between 1 and 5");
+      }
+      const result = await userService.sendFeedback({
+        userId,
+        username: username || "User",
+        email: userEmail,
+        features,
+        rating: Number(rating),
+        message: message || "",
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to send feedback",
+      });
+    }
+  }
 }
 
 export const userController = new UserController();
