@@ -2,14 +2,15 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import * as uploadController from "./upload.controller";
 
 const router = Router();
 
-// Configure multer to store files on disk temporarily
+// Configure multer to store files on disk temporarily in the system's temporary directory
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), "uploads");
+    const uploadDir = path.join(os.tmpdir(), "uploads");
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }

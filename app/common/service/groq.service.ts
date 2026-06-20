@@ -184,34 +184,42 @@ export class GroqService {
   }
 
   async generateRecipe(ingredients: string[]) {
-    try {
-      const prompt = `Generate a creative and easy-to-follow recipe using these ingredients: ${ingredients.join(", ")}.
-      The recipe should focus on "Zero Waste" by using up items that might be near expiry.
-      
-      Return as a JSON object:
-      {
-        "title": "Recipe Title",
-        "servings": "2",
-        "prepTime": "15 mins",
-        "ingredients": ["...", "..."],
-        "instructions": ["Step 1", "Step 2", "..."],
-        "wasteTip": "Why this recipe helps reduce waste"
-      }`;
+    const prompt = `Generate a creative and easy-to-follow recipe using these ingredients: ${ingredients.join(", ")}.
+    The recipe should focus on "Zero Waste" by using up items that might be near expiry.
+    
+    Return as a JSON object:
+    {
+      "title": "Recipe Title",
+      "servings": "2",
+      "prepTime": "15 mins",
+      "ingredients": ["...", "..."],
+      "instructions": ["Step 1", "Step 2", "..."],
+      "wasteTip": "Why this recipe helps reduce waste"
+    }`;
 
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.3-70b-versatile",
-        response_format: { type: "json_object" },
-      });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const chatCompletion = await groq.chat.completions.create({
+          messages: [{ role: "user", content: prompt }],
+          model: "llama-3.3-70b-versatile",
+          response_format: { type: "json_object" },
+        });
 
-      const content = chatCompletion.choices[0]?.message?.content;
-      if (!content) throw new Error("Failed to generate recipe");
+        const content = chatCompletion.choices[0]?.message?.content;
+        if (!content) throw new Error("Failed to generate recipe");
 
-      return JSON.parse(content);
-    } catch (error) {
-      console.error("Groq Recipe Error:", error);
-      throw new Error("Failed to generate recipe");
+        return JSON.parse(content);
+      } catch (error) {
+        console.error(`Groq Recipe Error (attempt ${attempt}/3):`, error);
+        if (attempt < 3 && this.isRetryableGroqError(error)) {
+          await this.delay(500 * attempt);
+          continue;
+        }
+        return this.getFallbackRecipe(ingredients);
+      }
     }
+
+    return this.getFallbackRecipe(ingredients);
   }
 
   async generateMealPlan(availableProducts: string[]) {
@@ -471,6 +479,51 @@ export class GroqService {
       console.error("Groq Inventory Insight Error:", error);
       return { message: "Your inventory is currently being tracked. Keep an eye on items expiring soon to maintain health and reduce food waste!" };
     }
+  }
+
+  private isRetryableGroqError(error: unknown) {
+    if (!error || typeof error !== "object") return false;
+
+    const maybeError = error as {
+      code?: string;
+      errno?: string;
+      status?: number;
+      message?: string;
+    };
+
+    return (
+      maybeError.code === "ERR_STREAM_PREMATURE_CLOSE" ||
+      maybeError.errno === "ERR_STREAM_PREMATURE_CLOSE" ||
+      maybeError.status === 408 ||
+      maybeError.status === 429 ||
+      (typeof maybeError.status === "number" && maybeError.status >= 500) ||
+      Boolean(maybeError.message?.toLowerCase().includes("premature close"))
+    );
+  }
+
+  private delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private getFallbackRecipe(ingredients: string[]) {
+    const selectedIngredients =
+      ingredients.length > 0 ? ingredients : ["available ingredients"];
+    const titleIngredient = selectedIngredients[0] || "Pantry";
+
+    return {
+      title: `Zero-Waste ${titleIngredient} Skillet`,
+      servings: "2",
+      prepTime: "20 mins",
+      ingredients: selectedIngredients,
+      instructions: [
+        "Wash, trim, and chop the selected ingredients into bite-sized pieces.",
+        "Heat a pan with a small amount of oil, then add the firmest ingredients first.",
+        "Season with salt, pepper, and any herbs or spices you have available.",
+        "Cook until tender, then serve warm as a quick bowl, wrap, or side dish.",
+      ],
+      wasteTip:
+        "Use the ingredients that are closest to expiry first, and save clean peels or scraps for stock when possible.",
+    };
   }
 
   private getFallbackMessage(action: string) {
