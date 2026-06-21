@@ -13,6 +13,10 @@ export interface IUser {
   role: Role;
   status: UserStatus;
   is_verified: boolean;
+  daily_reminder_enabled?: boolean;
+  daily_reminder_time?: string | null;
+  daily_reminder_timezone?: string | null;
+  last_daily_reminder_sent_at?: Date | string | null;
   last_login?: Date | string;
   created_at: Date | string;
   updated_at: Date | string;

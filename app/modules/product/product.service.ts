@@ -1,6 +1,11 @@
 import { supabase } from "../../config/supabase";
+import { supabaseAdmin } from "../../common/service/supabase.admin";
 import { IProduct, ICreateProduct, IUpdateProduct } from "./product.model";
 import { groqService } from "../../common/service/groq.service";
+import {
+  getHouseholdMemberIds,
+  getHouseholdIdForUser,
+} from "../household/household.service";
 
 interface NormalizedProduct {
   name: string;
@@ -14,6 +19,21 @@ interface NormalizedProduct {
   rawData?: any;
 }
 
+
+const calculateDaysLeft = (expiryDate: string | Date): number => {
+  if (!expiryDate) return 0;
+  const expiry = new Date(expiryDate);
+  const now = new Date();
+  
+  // Set both to midnight to get exact calendar days diff
+  expiry.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  
+  const diffTime = expiry.getTime() - now.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays;
+};
 
 const mapRowToProduct = (row: any): any => {
   if (!row) return row;
@@ -34,30 +54,52 @@ const mapRowToProduct = (row: any): any => {
     notes: row.notes,
     ingredients: row.ingredients,
     is_consumed: row.is_consumed,
+    storageLocation: row.storage_location,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
 };
 
 export const createProduct = async (userId: string, data: ICreateProduct) => {
+  const expiryVal = data.expiry_date || (data as any).expiryDate;
+  const calculatedDaysLeft = expiryVal ? calculateDaysLeft(expiryVal) : null;
+  let status = data.status;
+  if (!status && calculatedDaysLeft !== null) {
+    if (calculatedDaysLeft < 0) {
+      status = "expired";
+    } else if (calculatedDaysLeft <= 3) {
+      status = "warning";
+    } else {
+      status = "good";
+    }
+  }
+
+  // Stamp household_id if user belongs to a household
+  let householdId: string | null = null;
+  try {
+    householdId = await getHouseholdIdForUser(userId);
+  } catch (_) { /* non-critical */ }
+
   const newProduct = {
     user_id: userId,
     name: data.name,
     category_id: data.category_id || null,
     barcode: data.barcode || null,
-    expiry_date: data.expiry_date || (data as any).expiryDate,
+    expiry_date: expiryVal,
     category: data.category || null,
     image_url: data.image_url || (data as any).imageUrl || null,
-    days_left: data.days_left || null,
-    status: data.status || "good",
+    days_left: calculatedDaysLeft,
+    status: status || "good",
     color: data.color || null,
     quantity: data.quantity || (data as any).qty || 1,
     progress: data.progress || null,
     notes: data.notes || null,
     ingredients: data.ingredients || null,
+    storage_location: data.storageLocation || data.storage_location || "other",
+    household_id: householdId,
   };
 
-  const { data: createdProduct, error } = await supabase
+  const { data: createdProduct, error } = await supabaseAdmin
     .from("products")
     .insert(newProduct)
     .select()
@@ -80,13 +122,32 @@ export const updateProduct = async (
   if (data.name !== undefined) dbData.name = data.name;
   if (data.category_id !== undefined) dbData.category_id = data.category_id;
   if (data.barcode !== undefined) dbData.barcode = data.barcode;
-  if (data.expiry_date !== undefined || (data as any).expiryDate !== undefined)
-    dbData.expiry_date = data.expiry_date || (data as any).expiryDate;
+  
+  const expiryVal = data.expiry_date || (data as any).expiryDate;
+  if (expiryVal !== undefined) {
+    const calculatedDaysLeft = calculateDaysLeft(expiryVal);
+    dbData.expiry_date = expiryVal;
+    dbData.days_left = calculatedDaysLeft;
+    
+    let status = data.status;
+    if (!status) {
+      if (calculatedDaysLeft < 0) {
+        status = "expired";
+      } else if (calculatedDaysLeft <= 3) {
+        status = "warning";
+      } else {
+        status = "good";
+      }
+    }
+    dbData.status = status;
+  } else {
+    if (data.days_left !== undefined) dbData.days_left = data.days_left;
+    if (data.status !== undefined) dbData.status = data.status;
+  }
+
   if (data.category !== undefined) dbData.category = data.category;
   if (data.image_url !== undefined || (data as any).imageUrl !== undefined)
     dbData.image_url = data.image_url || (data as any).imageUrl;
-  if (data.days_left !== undefined) dbData.days_left = data.days_left;
-  if (data.status !== undefined) dbData.status = data.status;
   if (data.color !== undefined) dbData.color = data.color;
   if (data.quantity !== undefined || (data as any).qty !== undefined)
     dbData.quantity = data.quantity || (data as any).qty;
@@ -94,12 +155,18 @@ export const updateProduct = async (
   if (data.notes !== undefined) dbData.notes = data.notes;
   if (data.ingredients !== undefined) dbData.ingredients = data.ingredients;
   if (data.is_consumed !== undefined) dbData.is_consumed = data.is_consumed;
+  if (data.storageLocation !== undefined || data.storage_location !== undefined)
+    dbData.storage_location = data.storageLocation || data.storage_location;
 
-  const { data: updatedProduct, error } = await supabase
+  // Allow any household member to update a shared product
+  let memberIds: string[] = [userId];
+  try { memberIds = await getHouseholdMemberIds(userId); } catch (_) {}
+
+  const { data: updatedProduct, error } = await supabaseAdmin
     .from("products")
     .update(dbData)
     .eq("id", productId)
-    .eq("user_id", userId) // Ensure user owns the product
+    .in("user_id", memberIds)
     .select()
     .single();
 
@@ -108,11 +175,15 @@ export const updateProduct = async (
 };
 
 export const deleteProduct = async (userId: string, productId: string) => {
-  const { error } = await supabase
+  // Allow any household member to delete a shared product
+  let memberIds: string[] = [userId];
+  try { memberIds = await getHouseholdMemberIds(userId); } catch (_) {}
+
+  const { error } = await supabaseAdmin
     .from("products")
     .delete()
     .eq("id", productId)
-    .eq("user_id", userId);
+    .in("user_id", memberIds);
 
   if (error) throw new Error(error.message);
   return { deleted_count: 1 };
@@ -131,10 +202,14 @@ export const getProductById = async (userId: string, productId: string) => {
 };
 
 export const getAllProducts = async (userId: string) => {
-  const { data, error } = await supabase
+  // Expand query to all household members if user belongs to one
+  let memberIds: string[] = [userId];
+  try { memberIds = await getHouseholdMemberIds(userId); } catch (_) {}
+
+  const { data, error } = await supabaseAdmin
     .from("products")
     .select("*")
-    .eq("user_id", userId)
+    .in("user_id", memberIds)
     .order("expiry_date", { ascending: true });
 
   if (error) throw new Error(error.message);

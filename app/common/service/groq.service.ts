@@ -21,6 +21,10 @@ export class GroqService {
       
       CRITICAL: If the category is "Medicine", add a suffix: "⚠️ Note: Check instructions before use."
       
+      CRITICAL: If "daysLeft" or "expiryDate" is provided in the Context:
+      - Do NOT hallucinate relative terms like "expires tomorrow", "expires today", "getting closer", etc., unless they match the "daysLeft" value exactly (e.g., only say "expires tomorrow" if daysLeft is 1, and "expires today" if daysLeft is 0).
+      - If "daysLeft" is a large number (e.g., more than 7 days), state the actual days left or the expiry date directly (e.g., "expires in X days" or "expires on YYYY-MM-DD") instead of using incorrect relative terms.
+      
       The message MUST include:
       - "title": A catchy headline (with emojis).
       - "body": A detailed but concise description of exactly what happened. (Max 150 chars).

@@ -36,6 +36,16 @@ router.post(
   userController.updateFcmToken,
 );
 router.get(
+  "/reminder-settings",
+  roleAuth(["ADMIN", "USER"]),
+  userController.getReminderSettings,
+);
+router.patch(
+  "/reminder-settings",
+  roleAuth(["ADMIN", "USER"]),
+  userController.updateReminderSettings,
+);
+router.get(
   "/admin/logs",
   roleAuth(["ADMIN"]),
   userController.getSystemLogs,

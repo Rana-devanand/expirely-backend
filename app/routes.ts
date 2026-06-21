@@ -1,5 +1,4 @@
 import express from "express";
-import path from "path";
 import userRoutes from "./modules/user/user.routes";
 import categoryRoutes from "./modules/category/category.routes";
 import productRoutes from "./modules/product/product.routes";
@@ -10,8 +9,11 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes";
 import testerRoutes from "./modules/tester/tester.routes";
 import reportRoutes from "./modules/report/report.routes";
 import cronRoutes from "./modules/notification/cron.routes";
+import shoppingRoutes from "./modules/shopping/shopping.routes";
+import usageRoutes from "./modules/usage/usage.routes";
+import recurringRoutes from "./modules/recurring/recurring.routes";
+import householdRoutes from "./modules/household/household.routes";
 
-// routes
 const router = express.Router();
 
 router.use("/users", userRoutes);
@@ -24,5 +26,9 @@ router.use("/notifications", notificationRoutes);
 router.use("/tester", testerRoutes);
 router.use("/reports", reportRoutes);
 router.use("/cron", cronRoutes);
+router.use("/shopping-list", shoppingRoutes);
+router.use("/analytics", usageRoutes);
+router.use("/recurring-products", recurringRoutes);
+router.use("/households", householdRoutes);
 
 export default router;

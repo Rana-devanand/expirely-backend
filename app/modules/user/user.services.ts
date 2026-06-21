@@ -4,6 +4,7 @@ import { createUserTokens } from "../../common/service/passport-jwt.service";
 import { sendEmail } from "../../common/service/email.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_fallback_secret";
+const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export class UserService {
   async signUp(userData: any) {
@@ -34,6 +35,8 @@ export class UserService {
           auth_provider: "local",
           role: "USER",
           status: "active",
+          daily_reminder_enabled: false,
+          daily_reminder_timezone: "UTC",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -324,7 +327,7 @@ export class UserService {
     const { data, error } = await supabase
       .from("users")
       .select(
-        "id, email, username, status, auth_provider, avatar_url, created_at, updated_at, role",
+        "id, email, username, status, auth_provider, avatar_url, created_at, updated_at, role, daily_reminder_enabled, daily_reminder_time, daily_reminder_timezone, last_daily_reminder_sent_at",
       )
       .eq("id", userId)
       .single();
@@ -359,7 +362,7 @@ export class UserService {
       })
       .eq("id", userId)
       .select(
-        "id, email, username, status, auth_provider, avatar_url, created_at, updated_at, role",
+        "id, email, username, status, auth_provider, avatar_url, created_at, updated_at, role, daily_reminder_enabled, daily_reminder_time, daily_reminder_timezone, last_daily_reminder_sent_at",
       )
       .single();
 
@@ -471,6 +474,71 @@ export class UserService {
 
     if (error) throw error;
     return { success: true };
+  }
+
+  async getReminderSettings(userId: string) {
+    const { data, error } = await supabase
+      .from("users")
+      .select(
+        "daily_reminder_enabled, daily_reminder_time, daily_reminder_timezone, last_daily_reminder_sent_at",
+      )
+      .eq("id", userId)
+      .single();
+
+    if (error) throw error;
+
+    return {
+      dailyReminderEnabled: Boolean(data?.daily_reminder_enabled),
+      dailyReminderTime: data?.daily_reminder_time || "20:00",
+      timezone: data?.daily_reminder_timezone || "UTC",
+      lastDailyReminderSentAt: data?.last_daily_reminder_sent_at || null,
+    };
+  }
+
+  async updateReminderSettings(
+    userId: string,
+    settings: {
+      dailyReminderEnabled?: boolean;
+      dailyReminderTime?: string;
+      timezone?: string;
+    },
+  ) {
+    const {
+      dailyReminderEnabled = false,
+      dailyReminderTime = "20:00",
+      timezone = "UTC",
+    } = settings;
+
+    if (typeof dailyReminderEnabled !== "boolean") {
+      throw new Error("dailyReminderEnabled must be a boolean");
+    }
+
+    if (!REMINDER_TIME_PATTERN.test(dailyReminderTime)) {
+      throw new Error("dailyReminderTime must use HH:mm format");
+    }
+
+    const safeTimezone =
+      typeof timezone === "string" && timezone.trim().length > 0
+        ? timezone.trim()
+        : "UTC";
+
+    const { data, error } = await supabase
+      .from("users")
+      .update({
+        daily_reminder_enabled: dailyReminderEnabled,
+        daily_reminder_time: dailyReminderTime,
+        daily_reminder_timezone: safeTimezone,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId)
+      .select(
+        "id, email, username, status, auth_provider, avatar_url, created_at, updated_at, role, daily_reminder_enabled, daily_reminder_time, daily_reminder_timezone, last_daily_reminder_sent_at",
+      )
+      .single();
+
+    if (error) throw error;
+
+    return data;
   }
 
   async forgotPassword(email: string) {

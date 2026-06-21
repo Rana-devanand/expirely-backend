@@ -1,4 +1,5 @@
 import { queueService } from "../../common/service/queue.service";
+import { geminiService } from "../../common/service/gemini.service";
 import { groqService } from "../../common/service/groq.service";
 import { supabase } from "../../config/supabase";
 import { sendPushNotification } from "../../common/service/fcm.service";
@@ -43,7 +44,7 @@ export class NotificationWorker {
     try {
       // ── 1. Generate notification content via Groq AI ──
       if (type === "EXPIRY_WARNING") {
-        const messages = await groqService.generateExpiryAlertMessages(
+        const messages = await geminiService.generateExpiryAlertMessages(
           product.name,
           product.category || "General",
         );

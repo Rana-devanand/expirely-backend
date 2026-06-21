@@ -20,6 +20,7 @@ export const createProduct = asyncHandler(
         category: result.category,
         qty: result.qty,
         expiryDate: result.expiryDate,
+        daysLeft: result.daysLeft,
       },
       "success",
     );
@@ -62,6 +63,7 @@ export const updateProduct = asyncHandler(
         category: result.category,
         qty: result.qty,
         expiryDate: result.expiryDate,
+        daysLeft: result.daysLeft,
         isConsumed: result.is_consumed,
       },
       isConsumedToggle ? "success" : "info",

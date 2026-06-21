@@ -15,6 +15,8 @@ export interface IProduct {
   notes?: string;
   ingredients?: string;
   is_consumed: boolean;
+  storage_location?: "fridge" | "freezer" | "pantry" | "medicine_box" | "other";
+  storageLocation?: "fridge" | "freezer" | "pantry" | "medicine_box" | "other";
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -35,6 +37,8 @@ export interface ICreateProduct {
   progress?: number;
   notes?: string;
   ingredients?: string;
+  storage_location?: "fridge" | "freezer" | "pantry" | "medicine_box" | "other";
+  storageLocation?: "fridge" | "freezer" | "pantry" | "medicine_box" | "other";
 }
 
 export interface IUpdateProduct {
@@ -55,4 +59,6 @@ export interface IUpdateProduct {
   notes?: string;
   ingredients?: string;
   is_consumed?: boolean;
+  storage_location?: "fridge" | "freezer" | "pantry" | "medicine_box" | "other";
+  storageLocation?: "fridge" | "freezer" | "pantry" | "medicine_box" | "other";
 }

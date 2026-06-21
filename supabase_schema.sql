@@ -18,6 +18,10 @@ CREATE TABLE public.users (
   access_token text,
   refresh_token text,
   fcm_token text,
+  daily_reminder_enabled boolean DEFAULT false,
+  daily_reminder_time text,
+  daily_reminder_timezone text DEFAULT 'UTC'::text,
+  last_daily_reminder_sent_at timestamp with time zone,
   reset_code text,
   reset_expiry timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id)
@@ -42,6 +46,9 @@ CREATE TABLE public.products (
   progress integer,
   notes text,
   ingredients text,
+  remaining_qty numeric,
+  last_used_at timestamp with time zone,
+  storage_location text CHECK (storage_location = ANY (ARRAY['fridge'::text, 'freezer'::text, 'pantry'::text, 'medicine_box'::text, 'other'::text])),
   CONSTRAINT products_pkey PRIMARY KEY (id),
   CONSTRAINT products_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
@@ -85,4 +92,30 @@ CREATE TABLE public.system_logs (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT system_logs_pkey PRIMARY KEY (id),
   CONSTRAINT system_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.shopping_list (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  category text,
+  quantity integer DEFAULT 1,
+  is_checked boolean DEFAULT false,
+  source_product_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT shopping_list_pkey PRIMARY KEY (id),
+  CONSTRAINT shopping_list_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT shopping_list_source_product_id_fkey FOREIGN KEY (source_product_id) REFERENCES public.products(id)
+);
+CREATE TABLE public.product_usage_events (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  type text NOT NULL CHECK (type = ANY (ARRAY['USED_FULLY'::text, 'USED_PARTIALLY'::text, 'WASTED'::text])),
+  quantity numeric DEFAULT 1,
+  note text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT product_usage_events_pkey PRIMARY KEY (id),
+  CONSTRAINT product_usage_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT product_usage_events_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );

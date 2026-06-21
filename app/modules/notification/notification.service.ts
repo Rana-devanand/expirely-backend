@@ -1,5 +1,5 @@
 import { supabase } from "../../config/supabase";
-import { groqService } from "../../common/service/groq.service";
+import { geminiService } from "../../common/service/gemini.service";
 
 export class NotificationService {
   async createNotification(
@@ -10,7 +10,7 @@ export class NotificationService {
   ) {
     try {
       // 1. Generate message using Groq AI
-      const aiResponse = await groqService.generateNotificationMessage(
+      const aiResponse = await geminiService.generateNotificationMessage(
         action,
         data,
       );
@@ -30,7 +30,7 @@ export class NotificationService {
       return { success: true };
     } catch (error) {
       console.error("Failed to create notification:", error);
-      // Even if AI fails, we should have a fallback handled by GroqService
+      // Even if AI fails, Gemini service already falls back to deterministic messages.
     }
   }
 
@@ -67,7 +67,10 @@ export class NotificationService {
   }
 
   async generateExpiryMessages(productName: string, category: string) {
-    return await groqService.generateExpiryAlertMessages(productName, category);
+    return await geminiService.generateExpiryAlertMessages(
+      productName,
+      category,
+    );
   }
 
   async getAllNotifications() {
