@@ -24,6 +24,7 @@ CREATE TABLE public.users (
   last_daily_reminder_sent_at timestamp with time zone,
   reset_code text,
   reset_expiry timestamp with time zone,
+  opt_out boolean DEFAULT false,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.products (

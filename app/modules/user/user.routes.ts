@@ -11,6 +11,7 @@ router.post("/me", userController.me);
 router.post("/social-login", userController.socialLogin);
 router.post("/forgot-password", userController.forgotPassword);
 router.post("/reset-password", userController.resetPassword);
+router.post("/unsubscribe", userController.unsubscribe);
 router.get("/", userController.getAllUsers);
 router.put("/:id/status", roleAuth(["ADMIN"]), userController.updateStatus);
 router.post("/logout", roleAuth(["ADMIN", "USER"]), userController.logout);
@@ -49,6 +50,11 @@ router.get(
   "/admin/logs",
   roleAuth(["ADMIN"]),
   userController.getSystemLogs,
+);
+router.post(
+  "/admin/broadcast-email",
+  roleAuth(["ADMIN"]),
+  userController.broadcastEmail,
 );
 router.post(
   "/feedback",

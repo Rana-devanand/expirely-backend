@@ -20,6 +20,7 @@ export interface IUser {
   last_login?: Date | string;
   created_at: Date | string;
   updated_at: Date | string;
+  opt_out?: boolean;
 }
 
 export interface IUpdateUser {

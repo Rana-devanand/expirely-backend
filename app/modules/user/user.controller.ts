@@ -379,7 +379,6 @@ export class UserController {
         .limit(100);
 
       if (error) throw error;
-
       res.status(200).json({
         success: true,
         data: logs,
@@ -446,6 +445,44 @@ export class UserController {
       res.status(400).json({
         success: false,
         message: error.message || "Failed to send feedback",
+      });
+    }
+  }
+
+  async broadcastEmail(req: Request, res: Response) {
+    try {
+      const user = req.user as any;
+      if (!user || user.role !== "ADMIN") {
+        throw new Error("Unauthorized access. Admin role required.");
+      }
+
+      const { subject, content, recipients } = req.body;
+      if (!subject || !content || !recipients || !Array.isArray(recipients)) {
+        throw new Error("Subject, content, and recipients array are required");
+      }
+
+      const result = await userService.broadcastEmail({ subject, content, recipients });
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to broadcast email",
+      });
+    }
+  }
+
+  async unsubscribe(req: Request, res: Response) {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        throw new Error("Email is required");
+      }
+      const result = await userService.unsubscribeUser(email);
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to unsubscribe",
       });
     }
   }

@@ -698,6 +698,64 @@ export class UserService {
     console.log(`📬 [Feedback] Email sent from ${email} (${username}), rating: ${rating}/5`);
     return { success: true, message: "Thank you for your feedback!" };
   }
+
+  async broadcastEmail(payload: { subject: string; content: string; recipients: string[] }) {
+    const { subject, content, recipients } = payload;
+
+    // 1. Fetch matching users who have NOT opted out
+    const { data: users, error } = await supabase
+      .from("users")
+      .select("email, username")
+      .in("email", recipients)
+      .neq("opt_out", true);
+
+    if (error) throw error;
+    if (!users || users.length === 0) {
+      return { success: true, sentCount: 0, message: "No users found in database (or all selected users opted out)." };
+    }
+
+    let sentCount = 0;
+    let failCount = 0;
+
+    for (const user of users) {
+      if (!user.email) continue;
+      try {
+        await sendEmail({
+          to: user.email,
+          subject,
+          template: "broadcast",
+          data: {
+            username: user.username || "User",
+            email: user.email,
+            subject,
+            content,
+          }
+        });
+        sentCount++;
+      } catch (err: any) {
+        console.error(`❌ Failed to send broadcast email to ${user.email}:`, err.message);
+        failCount++;
+      }
+    }
+
+    return {
+      success: true,
+      sentCount,
+      failCount,
+      message: `Broadcast complete: ${sentCount} successfully sent, ${failCount} failed.`
+    };
+  }
+
+  async unsubscribeUser(email: string) {
+    const { data, error } = await supabase
+      .from("users")
+      .update({ opt_out: true })
+      .eq("email", email)
+      .select();
+
+    if (error) throw error;
+    return { success: true, message: "Unsubscribed successfully." };
+  }
 }
 
 export const userService = new UserService();

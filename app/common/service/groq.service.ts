@@ -2,6 +2,7 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
+  fetch: globalThis.fetch,
 });
 
 export class GroqService {
@@ -552,6 +553,53 @@ export class GroqService {
           title: "Notification",
           body: "Action performed successfully.",
         };
+    }
+  }
+
+  async generateBroadcastEmail(type: string) {
+    try {
+      let topicDetail = "general updates";
+      if (type === "privacy_updated") {
+        topicDetail = "our Privacy Policy and Terms of Service have been updated to reflect new features: Family / Shared Inventories, Waste Savings Dashboard analytics, and timezone-based Daily Reminders";
+      }
+      
+      const prompt = `Write a professional, friendly, and engaging email subject and body for our smart product expiry tracker app, Expirely.
+      The announcement topic is: "${topicDetail}".
+      
+      Requirements:
+      1. The user must be greeted warmly.
+      2. The email should highlight that these updates help them manage their food/household inventory better and reduce waste.
+      3. We must inform them that their security and privacy are our top priorities.
+      4. Return the subject and body as a JSON object:
+      {
+        "subject": "...",
+        "body": "..."
+      }
+      5. Keep the body text clear, readable, and professional, split into short paragraphs. Do NOT include html tags, custom placeholders like [Link] or buttons in the body. We will place the buttons programmatically. Use plain text for the body. Make it feel personalized.
+      6. Do NOT include any emojis, icons, or special symbols (such as 📢, ⏳, etc.) in either the subject or the body of the email. Emojis trigger spam filters, so keep both subject and body as plain text only.`;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+      });
+
+      const content = chatCompletion.choices[0]?.message?.content;
+      if (!content) throw new Error("Failed to generate broadcast email from Groq");
+
+      return JSON.parse(content);
+    } catch (error) {
+      console.error("Groq Broadcast Email Error:", error);
+      if (type === "general_announcement") {
+        return {
+          subject: "Expirely | Important Announcement",
+          body: "We are excited to share new updates and improvements to the Expirely platform. Log in today to check out the latest enhancements, manage your inventory, and continue saving on food waste!"
+        };
+      }
+      return {
+        subject: "Expirely | Privacy Policy and Terms of Service Update",
+        body: "We have updated our Privacy Policy and Terms of Service to reflect new features, including Family / Shared Inventories, Waste Savings analytics, and Daily Reminders. Please check our updated policies on our website."
+      };
     }
   }
 }

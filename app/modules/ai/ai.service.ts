@@ -20,6 +20,10 @@ class AIService {
   async getMealPlan(availableProducts: string[]) {
     return await groqService.generateMealPlan(availableProducts);
   }
+
+  async generateBroadcastEmail(type: string) {
+    return await groqService.generateBroadcastEmail(type);
+  }
 }
 
 export const aiService = new AIService();

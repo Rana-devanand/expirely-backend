@@ -12,5 +12,6 @@ router.get("/health-insight", aiController.getHealthInsight);
 router.post("/scan-receipt", aiController.scanReceipt);
 router.get("/meal-plan", aiController.getMealPlan);
 router.post("/generate-recipe", aiController.getRecipe);
+router.get("/generate-broadcast-email", roleAuth(["ADMIN"]), aiController.generateBroadcastEmail);
 
 export default router;

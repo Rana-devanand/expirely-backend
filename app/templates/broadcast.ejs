@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Expirely | Update Notification</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      background-color: #080d1e;
+      color: #f1f5f9;
+    }
+
+    .wrapper {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #080d1e;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #581c87 0%, #7e22ce 50%, #a855f7 100%);
+      padding: 40px 30px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-container {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+      position: relative;
+      z-index: 1;
+    }
+    .logo-icon {
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #e9d5ff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 50px;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header h1 {
+      font-size: 26px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.25;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Body ── */
+    .body {
+      background: #0f172a;
+      padding: 40px 35px;
+    }
+
+    .greeting {
+      font-size: 16px;
+      color: #cbd5e1;
+      margin-bottom: 16px;
+    }
+    .greeting strong { color: #f1f5f9; font-weight: 700; }
+
+    .message-content {
+      font-size: 15px;
+      color: #94a3b8;
+      line-height: 1.7;
+      margin-bottom: 35px;
+      white-space: pre-wrap;
+    }
+
+    /* ── Buttons ── */
+    .button-group {
+      margin-top: 30px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .btn-main {
+      display: block;
+      background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
+      color: #ffffff !important;
+      font-weight: 700;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 50px;
+      font-size: 15px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.35);
+      margin-bottom: 15px;
+    }
+    
+    .btn-secondary {
+      display: inline-block;
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      background: transparent;
+      color: #d8b4fe !important;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 10px 24px;
+      border-radius: 50px;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .btn-main:hover {
+      background: linear-gradient(135deg, #c084fc 0%, #818cf8 100%);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(168, 85, 247, 0.1);
+    }
+
+    /* ── Footer ── */
+    .footer {
+      background: #080d1e;
+      padding: 28px 30px;
+      text-align: center;
+      border-top: 1px solid rgba(168, 85, 247, 0.1);
+    }
+    .footer-brand {
+      font-size: 15px;
+      font-weight: 700;
+      color: #c084fc;
+      margin-bottom: 8px;
+    }
+    .footer-text {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-container">
+        <span class="logo-text">Expirely</span>
+      </div>
+      <div><span class="badge">Important Update</span></div>
+      <h1><%= subject %></h1>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+
+      <p class="greeting">Hello <strong><%= username %></strong>,</p>
+      <div class="message-content"><%- content %></div>
+
+      <!-- Action Buttons -->
+      <div class="button-group">
+        <a href="https://expirely.foocusedai.com/" class="btn-main" target="_blank">Open Web Application</a>
+        <a href="https://play.google.com/store/apps/details?id=com.expirely.mobile" class="btn-secondary" target="_blank">Download Mobile App</a>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-brand">Expirely</div>
+      <p class="footer-text">
+        Never let your groceries expire again. Track inventory, receive alerts, and prevent waste.<br/>
+        &copy; <%= new Date().getFullYear() %> Expirely. All rights reserved.
+      </p>
+      <p class="footer-text" style="margin-top: 12px;">
+        <a href="https://expirely.foocusedai.com/unsubscribe?email=<%= email %>" style="color: #64748b; text-decoration: underline; font-size: 11px;">Unsubscribe</a>
+      </p>
+    </div>
+
+  </div>
+</body>
+</html>
