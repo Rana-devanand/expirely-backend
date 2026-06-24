@@ -702,48 +702,37 @@ export class UserService {
   async broadcastEmail(payload: { subject: string; content: string; recipients: string[] }) {
     const { subject, content, recipients } = payload;
 
-    // 1. Fetch matching users who have NOT opted out
-    const { data: users, error } = await supabase
-      .from("users")
-      .select("email, username")
-      .in("email", recipients)
-      .neq("opt_out", true);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (error) throw error;
-    if (!users || users.length === 0) {
-      return { success: true, sentCount: 0, message: "No users found in database (or all selected users opted out)." };
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase configuration keys missing in Backend environment.");
     }
 
-    let sentCount = 0;
-    let failCount = 0;
+    const functionUrl = `${supabaseUrl}/functions/v1/broadcast-emails`;
+    console.log(`🚀 Delegating email broadcast to Supabase Edge Function: ${functionUrl}`);
 
-    for (const user of users) {
-      if (!user.email) continue;
-      try {
-        await sendEmail({
-          to: user.email,
-          subject,
-          template: "broadcast",
-          data: {
-            username: user.username || "User",
-            email: user.email,
-            subject,
-            content,
-          }
-        });
-        sentCount++;
-      } catch (err: any) {
-        console.error(`❌ Failed to send broadcast email to ${user.email}:`, err.message);
-        failCount++;
-      }
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseServiceKey}`,
+      },
+      body: JSON.stringify({
+        subject,
+        content,
+        recipients,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`❌ Supabase Edge Function call failed: ${response.status} - ${errorText}`);
+      throw new Error(`Edge Function execution failed: ${errorText}`);
     }
 
-    return {
-      success: true,
-      sentCount,
-      failCount,
-      message: `Broadcast complete: ${sentCount} successfully sent, ${failCount} failed.`
-    };
+    const result = await response.json();
+    return result;
   }
 
   async unsubscribeUser(email: string) {
