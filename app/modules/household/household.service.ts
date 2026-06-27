@@ -166,6 +166,45 @@ export const leaveHousehold = async (userId: string): Promise<void> => {
   }
 };
 
+/** Remove a member from the household (only allowed by household OWNER) */
+export const removeMember = async (ownerId: string, memberId: string): Promise<void> => {
+  // 1. Verify ownerId is indeed the OWNER of the household that memberId belongs to
+  const { data: ownerMembership } = await supabaseAdmin
+    .from("household_members")
+    .select("household_id, role")
+    .eq("user_id", ownerId)
+    .maybeSingle();
+
+  if (!ownerMembership || ownerMembership.role !== "OWNER") {
+    throw new Error("Only the owner of the household can remove members.");
+  }
+
+  // 2. Verify target member is in the same household
+  const { data: memberMembership } = await supabaseAdmin
+    .from("household_members")
+    .select("household_id, role")
+    .eq("user_id", memberId)
+    .maybeSingle();
+
+  if (!memberMembership || memberMembership.household_id !== ownerMembership.household_id) {
+    throw new Error("User is not a member of your household.");
+  }
+
+  if (memberMembership.role === "OWNER") {
+    throw new Error("The owner cannot be removed from the household.");
+  }
+
+  // 3. Delete member
+  const { error } = await supabaseAdmin
+    .from("household_members")
+    .delete()
+    .eq("user_id", memberId)
+    .eq("household_id", ownerMembership.household_id);
+
+  if (error) throw new Error(error.message);
+};
+
+
 /**
  * Returns the list of user IDs in the same household as the given user.
  * Returns [userId] if user has no household (fallback to self-only).

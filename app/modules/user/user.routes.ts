@@ -46,6 +46,16 @@ router.patch(
   roleAuth(["ADMIN", "USER"]),
   userController.updateReminderSettings,
 );
+router.post(
+  "/location",
+  roleAuth(["ADMIN", "USER"]),
+  userController.saveLocation,
+);
+router.get(
+  "/location",
+  roleAuth(["ADMIN", "USER"]),
+  userController.getLocation,
+);
 router.get(
   "/admin/logs",
   roleAuth(["ADMIN"]),

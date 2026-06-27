@@ -1,4 +1,5 @@
 import { supabase } from "../../config/supabase";
+import { supabaseAdmin } from "../../common/service/supabase.admin";
 import bcrypt from "bcryptjs";
 import { createUserTokens } from "../../common/service/passport-jwt.service";
 import { sendEmail } from "../../common/service/email.service";
@@ -744,6 +745,33 @@ export class UserService {
 
     if (error) throw error;
     return { success: true, message: "Unsubscribed successfully." };
+  }
+
+  async saveLocation(userId: string, country: string, locality: string) {
+    const { data, error } = await supabaseAdmin
+      .from("user_locations")
+      .upsert({
+        user_id: userId,
+        country,
+        locality,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  async getLocation(userId: string) {
+    const { data, error } = await supabaseAdmin
+      .from("user_locations")
+      .select("country, locality")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
   }
 }
 

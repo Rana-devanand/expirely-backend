@@ -120,3 +120,13 @@ CREATE TABLE public.product_usage_events (
   CONSTRAINT product_usage_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT product_usage_events_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
+
+CREATE TABLE public.user_locations (
+  user_id uuid NOT NULL,
+  country text NOT NULL,
+  locality text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_locations_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);

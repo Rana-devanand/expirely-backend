@@ -486,6 +486,36 @@ export class UserController {
       });
     }
   }
+
+  async saveLocation(req: Request, res: Response) {
+    try {
+      const user = req.user as any;
+      const { country, locality } = req.body;
+      if (!country || !locality) {
+        throw new Error("Country and locality are required.");
+      }
+      const data = await userService.saveLocation(user.id, country, locality);
+      res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to save location",
+      });
+    }
+  }
+
+  async getLocation(req: Request, res: Response) {
+    try {
+      const user = req.user as any;
+      const data = await userService.getLocation(user.id);
+      res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to fetch location",
+      });
+    }
+  }
 }
 
 export const userController = new UserController();

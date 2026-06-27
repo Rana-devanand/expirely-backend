@@ -11,5 +11,6 @@ router.get("/me", auth, householdController.getMyHousehold);
 router.post("/join", auth, householdController.joinHousehold);
 router.delete("/leave", auth, householdController.leaveHousehold);
 router.get("/members", auth, householdController.getMembers);
+router.delete("/members/:memberId", auth, householdController.removeMember);
 
 export default router;

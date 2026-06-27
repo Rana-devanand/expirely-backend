@@ -62,3 +62,17 @@ export const getMembers = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+export const removeMember = async (req: Request, res: Response) => {
+  try {
+    const user = req.user as any;
+    const memberId = req.params.memberId as string;
+    if (!memberId) {
+      return res.status(400).json({ success: false, message: "Member ID is required." });
+    }
+    await householdService.removeMember(user.id, memberId);
+    res.status(200).json({ success: true, message: "Member removed from household successfully." });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
