@@ -2,8 +2,8 @@ import nodemailer from "nodemailer";
 import ejs from "ejs";
 import path from "path";
 
-const mailUser = process.env.MAILJET_API_KEY || process.env.SMTP_USER || process.env.EMAILS;
-const mailPass = process.env.MAILJET_SECRET_KEY || process.env.SMTP_PASS || process.env.PASSWORD;
+const mailUser = process.env.SMTP_USER || process.env.MAILJET_API_KEY || process.env.EMAILS;
+const mailPass = process.env.SMTP_PASS || process.env.MAILJET_SECRET_KEY || process.env.PASSWORD;
 const mailFromEmail = process.env.MAIL_FROM_EMAIL || process.env.EMAILS;
 const mailFromName = process.env.MAIL_FROM_NAME || "Expirely App";
 
@@ -34,7 +34,7 @@ const getFromAddress = () => `"${mailFromName}" <${mailFromEmail}>`;
 
 const assertEmailConfig = () => {
   if (!mailUser || !mailPass || !mailFromEmail) {
-    throw new Error("Missing email configuration. Set MAILJET_API_KEY, MAILJET_SECRET_KEY, and MAIL_FROM_EMAIL.");
+    throw new Error("Missing email configuration. Set SMTP_USER/SMTP_PASS or MAILJET_API_KEY/MAILJET_SECRET_KEY.");
   }
 };
 

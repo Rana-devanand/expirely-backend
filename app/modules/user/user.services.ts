@@ -697,37 +697,56 @@ export class UserService {
   async broadcastEmail(payload: { subject: string; content: string; recipients: string[] }) {
     const { subject, content, recipients } = payload;
 
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    console.log(`🚀 Routing email broadcast via Node.js Backend: ${recipients.length} target recipients`);
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Supabase configuration keys missing in Backend environment.");
+    // 1. Fetch matching users who have NOT opted out
+    const { data: users, error: dbError } = await supabaseAdmin
+      .from("users")
+      .select("email, username")
+      .in("email", recipients)
+      .neq("opt_out", true);
+
+    if (dbError) {
+      console.error("❌ Failed to fetch users for broadcast:", dbError.message);
+      throw dbError;
     }
 
-    const functionUrl = `${supabaseUrl}/functions/v1/broadcast-emails`;
-    console.log(`🚀 Delegating email broadcast to Supabase Edge Function: ${functionUrl}`);
-
-    const response = await fetch(functionUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${supabaseServiceKey}`,
-      },
-      body: JSON.stringify({
-        subject,
-        content,
-        recipients,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ Supabase Edge Function call failed: ${response.status} - ${errorText}`);
-      throw new Error(`Edge Function execution failed: ${errorText}`);
+    if (!users || users.length === 0) {
+      return { success: true, sentCount: 0, failCount: 0, message: "No users to email." };
     }
 
-    const result = await response.json();
-    return result;
+    let sentCount = 0;
+    let failCount = 0;
+
+    // 2. Loop and send email via the configured transporter using the broadcast template
+    for (const user of users) {
+      if (!user.email) continue;
+      try {
+        await sendEmail({
+          to: user.email,
+          subject,
+          template: "broadcast",
+          data: {
+            subject,
+            username: user.username || "User",
+            content,
+            email: user.email,
+          },
+        });
+        sentCount++;
+      } catch (err: any) {
+        console.error(`❌ Failed to send broadcast email to ${user.email}: ${err.message}`);
+        failCount++;
+      }
+    }
+
+    console.log(`📬 Broadcast complete: ${sentCount} successfully sent, ${failCount} failed.`);
+    return {
+      success: true,
+      sentCount,
+      failCount,
+      message: `Broadcast complete: ${sentCount} successfully sent, ${failCount} failed.`,
+    };
   }
 
   async unsubscribeUser(email: string) {
