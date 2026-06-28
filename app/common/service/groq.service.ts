@@ -606,6 +606,46 @@ export class GroqService {
       };
     }
   }
+
+  async generatePushNotification(promptInput: string) {
+    try {
+      const prompt = `Write a catchy, short, and engaging push notification title and body for our smart product expiry tracker app, Expirely.
+      
+      Topic/Instruction from admin: "${promptInput}"
+      
+      Requirements:
+      1. Keep the title short (Max 40 chars) and catchy, you can use emojis.
+      2. Keep the body concise (Max 120 chars) and clear, suitable for a mobile phone lock screen notification tray.
+      3. Return as a JSON object:
+      {
+        "title": "...",
+        "body": "..."
+      }
+      
+      Example:
+      {
+        "title": "🔒 Privacy Update",
+        "body": "We've updated our Privacy Policy to better protect your data. Tap to view the details."
+      }`;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+      });
+
+      const content = chatCompletion.choices[0]?.message?.content;
+      if (!content) throw new Error("Failed to generate push notification from Groq");
+
+      return JSON.parse(content);
+    } catch (error) {
+      console.error("Groq Push Notification Error:", error);
+      return {
+        title: "🔔 Important Update",
+        body: promptInput || "We have shared new updates. Open the app to view details.",
+      };
+    }
+  }
 }
 
 export const groqService = new GroqService();

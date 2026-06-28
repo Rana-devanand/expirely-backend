@@ -40,5 +40,20 @@ router.post(
   roleAuth(["ADMIN"]),
   notificationController.adminSendNotification,
 );
+router.post(
+  "/admin/broadcast-push",
+  roleAuth(["ADMIN"]),
+  notificationController.broadcastPushNotification,
+);
+router.get(
+  "/admin/broadcast-push/logs",
+  roleAuth(["ADMIN"]),
+  notificationController.getBroadcastPushLogs,
+);
+router.post(
+  "/admin/generate-push",
+  roleAuth(["ADMIN"]),
+  notificationController.generatePushNotification,
+);
 
 export default router;

@@ -157,6 +157,134 @@ export class NotificationController {
       });
     }
   }
+
+  async broadcastPushNotification(req: Request, res: Response) {
+    try {
+      const { title, body, data, recipients } = req.body;
+      if (!title || !body) {
+        throw new Error("Title and body are required");
+      }
+
+      const { supabaseAdmin } = require("../../common/service/supabase.admin");
+      const { sendPushNotification } = require("../../common/service/fcm.service");
+      const { loggerService } = require("../../common/service/logger.service");
+
+      // 1. Fetch users who have FCM tokens, optionally filtering by selected emails
+      let query = supabaseAdmin
+        .from("users")
+        .select("id, username, email, fcm_token")
+        .not("fcm_token", "is", null);
+
+      if (recipients && Array.isArray(recipients) && recipients.length > 0) {
+        query = query.in("email", recipients);
+      }
+
+      const { data: users, error: dbError } = await query;
+
+      if (dbError) throw dbError;
+
+      const validUsers = (users || []).filter((u: any) => u.fcm_token && u.fcm_token.trim() !== "");
+
+      if (validUsers.length === 0) {
+        return res.status(200).json({
+          success: true,
+          sentCount: 0,
+          failCount: 0,
+          totalCount: 0,
+          message: "No target users have registered FCM tokens.",
+        });
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // 2. Loop and send push notification to each user
+      for (const user of validUsers) {
+        const success = await sendPushNotification(user.fcm_token, title, body, data);
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      // 3. Log the administrative broadcast in system_logs
+      const targetLabel = recipients && Array.isArray(recipients) && recipients.length > 0
+        ? `${validUsers.length} Selected Users`
+        : "All Users";
+
+      await loggerService.log(
+        "ADMIN_PUSH_BROADCAST",
+        {
+          title,
+          body,
+          target: targetLabel,
+          sentCount: successCount,
+          failCount: failCount,
+          totalCount: validUsers.length,
+        },
+        (req.user as any)?.id || null
+      );
+
+      res.status(200).json({
+        success: true,
+        sentCount: successCount,
+        failCount: failCount,
+        totalCount: validUsers.length,
+        message: `Push broadcast complete: ${successCount} successfully sent, ${failCount} failed.`,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to broadcast push notification",
+      });
+    }
+  }
+
+  async getBroadcastPushLogs(req: Request, res: Response) {
+    try {
+      const { supabaseAdmin } = require("../../common/service/supabase.admin");
+      const { data: logs, error } = await supabaseAdmin
+        .from("system_logs")
+        .select("id, details, created_at, user_id")
+        .eq("action", "ADMIN_PUSH_BROADCAST")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      res.status(200).json({
+        success: true,
+        data: logs || [],
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to fetch push broadcast logs",
+      });
+    }
+  }
+
+  async generatePushNotification(req: Request, res: Response) {
+    try {
+      const { prompt } = req.body;
+      if (!prompt) {
+        throw new Error("Prompt is required");
+      }
+
+      const { groqService } = require("../../common/service/groq.service");
+      const result = await groqService.generatePushNotification(prompt);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      res.status(400).json({
+        success: false,
+        message: error.message || "Failed to generate push notification suggestions",
+      });
+    }
+  }
 }
 
 export const notificationController = new NotificationController();

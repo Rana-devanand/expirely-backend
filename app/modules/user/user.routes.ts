@@ -57,6 +57,11 @@ router.get(
   userController.getLocation,
 );
 router.get(
+  "/admin/locations",
+  roleAuth(["ADMIN"]),
+  userController.getAllUserLocations,
+);
+router.get(
   "/admin/logs",
   roleAuth(["ADMIN"]),
   userController.getSystemLogs,

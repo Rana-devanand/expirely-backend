@@ -4,17 +4,16 @@ import { supabaseAdmin } from "../app/common/service/supabase.admin";
 dotenv.config();
 
 async function main() {
-  const targetEmail = "dev.cloudapp93@gmail.com";
-  console.log("Checking user in Supabase:", targetEmail);
-  const { data: users, error } = await supabaseAdmin
-    .from("users")
-    .select("id, email, username, opt_out")
-    .eq("email", targetEmail);
+  console.log("Fetching user locations from database...");
+  const { data, error } = await supabaseAdmin
+    .from("user_locations")
+    .select("*")
+    .limit(5);
 
   if (error) {
-    console.error("❌ Error fetching user:", error.message);
+    console.error("❌ Error fetching user locations:", error.message);
   } else {
-    console.log("✅ Users found:", users);
+    console.log("✅ User locations:", data);
   }
 }
 

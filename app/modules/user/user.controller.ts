@@ -516,6 +516,21 @@ export class UserController {
       });
     }
   }
+
+  async getAllUserLocations(req: Request, res: Response) {
+    try {
+      const locations = await userService.getAllUserLocations();
+      res.status(200).json({
+        success: true,
+        data: locations,
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to fetch user locations",
+      });
+    }
+  }
 }
 
 export const userController = new UserController();

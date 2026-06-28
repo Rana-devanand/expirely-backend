@@ -18,12 +18,12 @@ CREATE TABLE public.users (
   access_token text,
   refresh_token text,
   fcm_token text,
+  reset_code text,
+  reset_expiry timestamp with time zone,
   daily_reminder_enabled boolean DEFAULT false,
   daily_reminder_time text,
   daily_reminder_timezone text DEFAULT 'UTC'::text,
   last_daily_reminder_sent_at timestamp with time zone,
-  reset_code text,
-  reset_expiry timestamp with time zone,
   opt_out boolean DEFAULT false,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
@@ -50,9 +50,11 @@ CREATE TABLE public.products (
   remaining_qty numeric,
   last_used_at timestamp with time zone,
   storage_location text CHECK (storage_location = ANY (ARRAY['fridge'::text, 'freezer'::text, 'pantry'::text, 'medicine_box'::text, 'other'::text])),
+  household_id uuid,
   CONSTRAINT products_pkey PRIMARY KEY (id),
   CONSTRAINT products_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
+  CONSTRAINT products_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id),
+  CONSTRAINT products_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id)
 );
 CREATE TABLE public.categories (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -120,7 +122,39 @@ CREATE TABLE public.product_usage_events (
   CONSTRAINT product_usage_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT product_usage_events_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
-
+CREATE TABLE public.recurring_products (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  category text NOT NULL,
+  default_qty integer DEFAULT 1,
+  default_shelf_life_days integer NOT NULL,
+  image_url text,
+  last_added_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT recurring_products_pkey PRIMARY KEY (id),
+  CONSTRAINT recurring_products_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.households (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  owner_id uuid NOT NULL,
+  join_code text NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT households_pkey PRIMARY KEY (id),
+  CONSTRAINT households_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.household_members (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  household_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'MEMBER'::text CHECK (role = ANY (ARRAY['OWNER'::text, 'MEMBER'::text])),
+  joined_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT household_members_pkey PRIMARY KEY (id),
+  CONSTRAINT household_members_household_id_fkey FOREIGN KEY (household_id) REFERENCES public.households(id),
+  CONSTRAINT household_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.user_locations (
   user_id uuid NOT NULL,
   country text NOT NULL,
@@ -128,5 +162,5 @@ CREATE TABLE public.user_locations (
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT user_locations_pkey PRIMARY KEY (user_id),
-  CONSTRAINT user_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+  CONSTRAINT user_locations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );

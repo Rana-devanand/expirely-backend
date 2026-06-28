@@ -418,26 +418,37 @@ export class UserService {
         email, 
         username, 
         status, 
+        avatar_url,
         created_at, 
         role,
-        products:products(count)
+        products:products(count),
+        user_locations:user_locations(country)
       `)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    return users.map((u: any) => ({
-      id: u.id,
-      name: u.username || 'N/A',
-      email: u.email,
-      joinDate: new Date(u.created_at).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }),
-      products: u.products?.[0]?.count || 0,
-      status: u.status === 'active' ? 'Active' : 'Blocked'
-    }));
+    return users.map((u: any) => {
+      const locationArray = u.user_locations;
+      const country = locationArray
+        ? (Array.isArray(locationArray) ? locationArray[0]?.country : locationArray.country)
+        : null;
+
+      return {
+        id: u.id,
+        name: u.username || 'N/A',
+        email: u.email,
+        avatarUrl: u.avatar_url || null,
+        country: country || null,
+        joinDate: new Date(u.created_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }),
+        products: u.products?.[0]?.count || 0,
+        status: u.status === 'active' ? 'Active' : 'Blocked'
+      };
+    });
   }
 
   async updateUserStatus(userId: string, status: "active" | "blocked") {
@@ -785,6 +796,36 @@ export class UserService {
 
     if (error) throw error;
     return data;
+  }
+
+  async getAllUserLocations() {
+    const { data: locations, error } = await supabaseAdmin
+      .from("user_locations")
+      .select(`
+        user_id,
+        country,
+        locality,
+        created_at,
+        updated_at,
+        users:users(username, email, avatar_url)
+      `)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return (locations || []).map((loc: any) => {
+      const user = Array.isArray(loc.users) ? loc.users[0] : loc.users;
+      return {
+        userId: loc.user_id,
+        userName: user?.username || 'N/A',
+        userEmail: user?.email || 'N/A',
+        avatarUrl: user?.avatar_url || null,
+        country: loc.country,
+        state: loc.locality,
+        createdAt: loc.created_at,
+        updatedAt: loc.updated_at
+      };
+    });
   }
 }
 
