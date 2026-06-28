@@ -556,14 +556,14 @@ export class GroqService {
     }
   }
 
-  async generateBroadcastEmail(type: string) {
+  async generateBroadcastEmail(type: string, customInstruction?: string) {
     try {
       let topicDetail = "general updates";
       if (type === "privacy_updated") {
         topicDetail = "our Privacy Policy and Terms of Service have been updated to reflect new features: Family / Shared Inventories, Waste Savings Dashboard analytics, and timezone-based Daily Reminders";
       }
       
-      const prompt = `Write a professional, friendly, and engaging email subject and body for our smart product expiry tracker app, Expirely.
+      let prompt = `Write a professional, friendly, and engaging email subject and body for our smart product expiry tracker app, Expirely.
       The announcement topic is: "${topicDetail}".
       
       Requirements:
@@ -577,6 +577,10 @@ export class GroqService {
       }
       5. Keep the body text clear, readable, and professional, split into short paragraphs. Do NOT include html tags, custom placeholders like [Link] or buttons in the body. We will place the buttons programmatically. Use plain text for the body. Make it feel personalized.
       6. Do NOT include any emojis, icons, or special symbols (such as 📢, ⏳, etc.) in either the subject or the body of the email. Emojis trigger spam filters, so keep both subject and body as plain text only.`;
+
+      if (customInstruction && customInstruction.trim()) {
+        prompt += `\n\nAdditional custom requirements/instructions from the administrator: "${customInstruction.trim()}"`;
+      }
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],

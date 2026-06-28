@@ -2,7 +2,7 @@ import { supabase } from "../../config/supabase";
 import { supabaseAdmin } from "../../common/service/supabase.admin";
 import bcrypt from "bcryptjs";
 import { createUserTokens } from "../../common/service/passport-jwt.service";
-import { sendEmail } from "../../common/service/email.service";
+import { sendEmail, sendRawEmail } from "../../common/service/email.service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_fallback_secret";
 const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -684,14 +684,8 @@ export class UserService {
       </div>
     `;
 
-    const transporter = (await import("nodemailer")).default.createTransport({
-      service: "gmail",
-      auth: { user: process.env.EMAILS, pass: process.env.PASSWORD },
-    });
-
-    await transporter.sendMail({
-      from: `"Expirely App" <${process.env.EMAILS}>`,
-      to: "dev.cloudapp93@gmail.com",
+    await sendRawEmail({
+      to: process.env.ADMIN_EMAIL || process.env.EMAILS || "dev.cloudapp93@gmail.com",
       subject: `[Expirely Feedback] ${rating}⭐ from ${username}`,
       html,
     });

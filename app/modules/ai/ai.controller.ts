@@ -98,12 +98,12 @@ export const getMealPlan = asyncHandler(async (req: Request, res: Response) => {
 
 export const generateBroadcastEmail = asyncHandler(
   async (req: Request, res: Response) => {
-    const { type } = req.query;
+    const { type, prompt } = req.query;
     if (!type) {
       res.status(400).json({ success: false, message: "Type is required" });
       return;
     }
-    const emailData = await aiService.generateBroadcastEmail(type as string);
+    const emailData = await aiService.generateBroadcastEmail(type as string, prompt as string);
     res.status(200).json({ success: true, data: emailData });
   }
 );

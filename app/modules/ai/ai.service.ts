@@ -21,8 +21,8 @@ class AIService {
     return await groqService.generateMealPlan(availableProducts);
   }
 
-  async generateBroadcastEmail(type: string) {
-    return await groqService.generateBroadcastEmail(type);
+  async generateBroadcastEmail(type: string, prompt?: string) {
+    return await groqService.generateBroadcastEmail(type, prompt);
   }
 }
 

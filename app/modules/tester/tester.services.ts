@@ -41,7 +41,7 @@ export const createTester = async (testerData: ITester) => {
 
   // Notify admin about the new tester registration (non-blocking)
   sendEmail({
-    to: process.env.EMAILS as string,
+    to: (process.env.ADMIN_EMAIL || process.env.EMAILS) as string,
     subject: `🔔 New Tester: ${testerData.username} just registered!`,
     template: "tester-admin-notify",
     data: {
