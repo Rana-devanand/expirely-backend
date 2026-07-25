@@ -39,6 +39,12 @@ export const sendPushNotification = async (
   title: string,
   body: string,
   data?: Record<string, string>,
+  options?: {
+    imageUrl?: string;
+    channelId?: string;
+    tag?: string;
+    collapseKey?: string;
+  },
 ): Promise<boolean> => {
   if (!isInitialized) {
     console.warn("⚠️  [Firebase] SDK not initialized. Skipping push notification.");
@@ -50,20 +56,26 @@ export const sendPushNotification = async (
     return false;
   }
 
+  const notificationTag = options?.tag || options?.collapseKey;
+
   try {
     const message: admin.messaging.Message = {
       token: fcmToken,
       notification: {
         title,
         body,
+        ...(options?.imageUrl && { imageUrl: options.imageUrl }),
       },
       android: {
         priority: "high",
+        ...(notificationTag && { collapseKey: notificationTag }),
         notification: {
           sound: "default",
-          channelId: "expiry-alerts",
-          icon: "ic_launcher",
+          channelId: options?.channelId || "expiry-alerts",
+          icon: "notification_icon",
           color: "#10b981",
+          ...(notificationTag && { tag: notificationTag }),
+          ...(options?.imageUrl && { imageUrl: options.imageUrl }),
         },
       },
       apns: {
@@ -71,6 +83,7 @@ export const sendPushNotification = async (
           aps: {
             sound: "default",
             badge: 1,
+            ...(notificationTag && { threadId: notificationTag }),
           },
         },
       },

@@ -72,3 +72,18 @@ export const getAllCategories = asyncHandler(
     res.send(createResponse(result));
   },
 );
+
+export const getAdminCategories = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await categoryService.getAdminCategories();
+    res.send(createResponse(result));
+  },
+);
+
+export const adminDeleteCategory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const categoryId = req.params.id as string;
+    const result = await categoryService.adminDeleteCategory(categoryId);
+    res.send(createResponse(result, "Category deleted successfully"));
+  },
+);

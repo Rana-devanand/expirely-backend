@@ -7,6 +7,9 @@ const router = Router();
 // Require authenticated user for all category routes
 router.use(roleAuth(["ADMIN", "USER"]));
 
+router.get("/admin", roleAuth(["ADMIN"]), categoryController.getAdminCategories);
+router.delete("/admin/:id", roleAuth(["ADMIN"]), categoryController.adminDeleteCategory);
+
 router.post("/", categoryController.createCategory);
 router.get("/", categoryController.getAllCategories);
 router.get("/:id", categoryController.getCategoryById);
