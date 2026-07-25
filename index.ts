@@ -15,6 +15,7 @@ import { initPassport } from "./app/common/service/passport-jwt.service";
 import { schedulerService } from "./app/common/service/scheduler.service";
 import { notificationWorker } from "./app/modules/notification/notification.worker";
 import { initFirebase } from "./app/common/service/fcm.service";
+import { initializeCommunitySocket } from "./app/modules/community/community.socket";
 
 const app: Express = express();
 const port = Number(process.env.PORT) || 5000;
@@ -66,6 +67,7 @@ setupApp();
 // ── Start Server (Local Only)
 if (process.env.NODE_ENV !== "production") {
   const server = http.createServer(app);
+  initializeCommunitySocket(server);
   server.listen(port, "0.0.0.0", () => {
     console.log("-----------------------------------------");
     console.log(`✅ Server is running on port ${port}`);

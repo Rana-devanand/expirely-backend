@@ -8,5 +8,6 @@ router.use(roleAuth(["ADMIN"]));
 
 router.get("/", reportController.getReports);
 router.get("/export/:type/:format", reportController.downloadReport);
+router.post("/send-email-pdf", reportController.sendUserReport);
 
 export default router;

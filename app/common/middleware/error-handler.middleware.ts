@@ -15,5 +15,6 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     data: err?.data ?? {},
   };
 
+  if (req.aborted || res.headersSent || res.destroyed) return;
   res.status(response.error_code).json(response);
 };

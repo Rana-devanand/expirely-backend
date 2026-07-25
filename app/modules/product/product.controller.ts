@@ -3,6 +3,8 @@ import asyncHandler from "express-async-handler";
 import createHttpError from "http-errors";
 import { createResponse } from "../../common/helper/response.helper";
 import * as productService from "./product.service";
+import { generateProductReportPDF } from "../../common/service/pdf.service";
+import { supabaseAdmin } from "../../common/service/supabase.admin";
 import { notificationService } from "../notification/notification.service";
 import { loggerService } from "../../common/service/logger.service";
 
@@ -152,10 +154,57 @@ export const getAdminProducts = asyncHandler(
     res.send(createResponse(result));
   },
 );
+
+export const getAdminProductById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const productId = req.params.id as string;
+    const result = await productService.getAdminProductById(productId);
+    if (!result) throw createHttpError(404, "Product not found");
+    res.send(createResponse(result));
+  },
+);
 export const getDynamicInsight = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = (req.user as any).id as string;
     const result = await productService.getDynamicInventoryInsight(userId);
     res.send(createResponse(result));
   },
+);
+
+export const exportUserProductsPDF = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user as any;
+
+    // Fetch user username & email since it is not inside JWT accessToken payload
+    const { data: dbUser } = await supabaseAdmin
+      .from("users")
+      .select("username, email")
+      .eq("id", user.id)
+      .single();
+
+    const userProfile = {
+      username: dbUser?.username || "User",
+      email: dbUser?.email || user.email || ""
+    };
+
+    const products = await productService.getAllProducts(user.id);
+    
+    // Map products to matching formats supporting both mapped camelCase and raw snake_case models
+    const productsMapped = (products || []).map((row: any) => ({
+      name: row.name,
+      category: row.category,
+      expiryDate: row.expiryDate || row.expiry_date,
+      qty: row.qty !== undefined ? row.qty : (row.quantity !== undefined ? row.quantity : 1),
+      status: row.status
+    }));
+
+    const pdfBuffer = await generateProductReportPDF(userProfile, productsMapped);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=expirely_report_${userProfile.username.replace(/\s+/g, "_")}_${Date.now()}.pdf`
+    );
+    res.status(200).send(pdfBuffer);
+  }
 );

@@ -355,3 +355,26 @@ export const getAllAdminProducts = async () => {
     };
   });
 };
+
+export const getAdminProductById = async (productId: string) => {
+  const { data, error } = await supabase
+    .from("products")
+    .select(`
+      *,
+      users:user_id (username, email)
+    `)
+    .eq("id", productId)
+    .single();
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw new Error(error.message);
+  }
+  
+  const product = mapRowToProduct(data);
+  return {
+    ...product,
+    addedBy: data.users?.username || 'Unknown',
+    addedByEmail: data.users?.email || 'Unknown'
+  };
+};

@@ -50,18 +50,18 @@ export class QueueService {
   }
 
   async read(vt: number = 30) {
-    const query = `SELECT * FROM pgmq.read('${this.queueName}', $1, 1);`;
+    const query = `SELECT * FROM pgmq.read('${this.queueName}', $1::integer, 1);`;
     const { rows } = await pool.query(query, [vt]);
     return rows.length > 0 ? rows[0] : null;
   }
 
   async archive(msgId: number) {
-    const query = `SELECT * FROM pgmq.archive('${this.queueName}', $1);`;
+    const query = `SELECT * FROM pgmq.archive('${this.queueName}', $1::bigint);`;
     await pool.query(query, [msgId]);
   }
 
   async delete(msgId: number) {
-    const query = `SELECT * FROM pgmq.delete('${this.queueName}', $1);`;
+    const query = `SELECT * FROM pgmq.delete('${this.queueName}', $1::bigint);`;
     await pool.query(query, [msgId]);
   }
 }

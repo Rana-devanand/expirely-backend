@@ -63,3 +63,25 @@ export const sendRawEmail = async ({ to, subject, html }: SendRawEmailOptions): 
     html,
   });
 };
+
+export const sendEmailWithAttachment = async ({
+  to,
+  subject,
+  html,
+  attachments
+}: {
+  to: string;
+  subject: string;
+  html: string;
+  attachments: { filename: string; content: Buffer }[];
+}): Promise<void> => {
+  assertEmailConfig();
+
+  await transporter.sendMail({
+    from: getFromAddress(),
+    to,
+    subject,
+    html,
+    attachments,
+  });
+};

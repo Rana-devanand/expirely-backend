@@ -13,6 +13,7 @@ import shoppingRoutes from "./modules/shopping/shopping.routes";
 import usageRoutes from "./modules/usage/usage.routes";
 import recurringRoutes from "./modules/recurring/recurring.routes";
 import householdRoutes from "./modules/household/household.routes";
+import communityRoutes from "./modules/community/community.routes";
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use("/shopping-list", shoppingRoutes);
 router.use("/analytics", usageRoutes);
 router.use("/recurring-products", recurringRoutes);
 router.use("/households", householdRoutes);
+router.use("/community", communityRoutes);
 
 export default router;

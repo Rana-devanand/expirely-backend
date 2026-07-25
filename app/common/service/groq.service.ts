@@ -6,6 +6,46 @@ const groq = new Groq({
 });
 
 export class GroqService {
+  async generateMarketplaceAdvice(context: {
+    title?: string;
+    description?: string;
+    askingPrice?: number;
+    otherPrice?: number;
+    role?: "buyer" | "seller";
+  }) {
+    try {
+      const prompt = `You are a fair marketplace pricing and negotiation assistant.
+Product: ${context.title || "Unknown product"}
+Description: ${context.description || "Not provided"}
+Asking price: ${context.askingPrice ?? "Not provided"}
+Latest other-party price: ${context.otherPrice ?? "Not provided"}
+User role: ${context.role || "buyer"}
+
+Give practical guidance without claiming access to live market prices. Return JSON:
+{"suggestedLow": number, "suggestedHigh": number, "recommendedOffer": number, "reasoning": "2 concise sentences", "message": "a polite negotiation message the user can send"}.
+All numeric values must be non-negative. Base the range on the supplied asking price and condition/context.`;
+      const completion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+      });
+      return JSON.parse(completion.choices[0]?.message?.content || "{}");
+    } catch (error) {
+      console.error("Groq marketplace advice error:", error);
+      const price = Number(context.askingPrice) || 0;
+      const buyer = context.role !== "seller";
+      return {
+        suggestedLow: Number((price * 0.85).toFixed(2)),
+        suggestedHigh: Number((price * 1.05).toFixed(2)),
+        recommendedOffer: Number((price * (buyer ? 0.9 : 0.95)).toFixed(2)),
+        reasoning: "This estimate is based on the asking price because live comparable sales are unavailable. Consider condition, demand, and local pickup costs.",
+        message: buyer
+          ? `Would you consider ${Number((price * 0.9).toFixed(2))}? I am ready to purchase if that works for you.`
+          : `Thanks for your interest. I can offer ${Number((price * 0.95).toFixed(2))} based on the item's condition.`,
+      };
+    }
+  }
+
   async generateNotificationMessage(action: string, context: any) {
     try {
       const prompt = `Generate a short, engaging, and professional notification message for a "Smart Expiry Tracker" app.
@@ -45,6 +85,61 @@ export class GroqService {
     } catch (error) {
       console.error("Groq AI Error:", error);
       return this.getFallbackMessage(action);
+    }
+  }
+
+  private groqRateLimitedUntil = 0;
+
+  async generateDailyRecap(newProducts: any[]) {
+    const productList = Array.isArray(newProducts)
+      ? newProducts
+      : newProducts
+      ? [newProducts]
+      : [];
+
+    const fallback = {
+      title: "🌙 Evening Inventory Recap",
+      body:
+        productList.length > 0
+          ? `You added ${productList.length} new items today. Keep up the great work reducing waste!`
+          : "Check your pantry inventory to stay ahead of product expiry dates!",
+    };
+
+    if (Date.now() < this.groqRateLimitedUntil) {
+      return fallback;
+    }
+
+    try {
+      const productNames = productList.map((p: any) => p.name || p.title || "item").join(", ");
+      const prompt = `Generate a warm and helpful evening recap notification for a "Smart Expiry Tracker" app.
+      
+      The user added these products today: ${productNames || "grocery items"}.
+      
+      Requirements:
+      1. Summarize the items added today.
+      2. Encourage the user to check their inventory before sleeping.
+      3. Keep it friendly and pro-active.
+      
+      Return as a JSON object: {"title": "...", "body": "..."}`;
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.3-70b-versatile",
+        response_format: { type: "json_object" },
+      });
+
+      const content = chatCompletion.choices[0]?.message?.content;
+      if (!content) throw new Error("Failed to generate daily recap");
+
+      return JSON.parse(content);
+    } catch (error: any) {
+      if (error?.status === 429 || error?.message?.includes("rate_limit_exceeded")) {
+        this.groqRateLimitedUntil = Date.now() + 3 * 60 * 1000;
+        console.warn("⚠️ Groq AI rate-limited (429). Pausing Groq API calls for 3 minutes.");
+      } else {
+        console.warn("Groq Daily Recap Fallback:", error.message || error);
+      }
+      return fallback;
     }
   }
 
@@ -273,38 +368,6 @@ export class GroqService {
     }
   }
 
-  async generateDailyRecap(newProducts: any[]) {
-    try {
-      const productNames = newProducts.map((p) => p.name).join(", ");
-      const prompt = `Generate a warm and helpful evening recap notification for a "Smart Expiry Tracker" app.
-      
-      The user added these products today: ${productNames}.
-      
-      Requirements:
-      1. Summarize the items added today.
-      2. Encourage the user to check their inventory before sleeping.
-      3. Keep it friendly and pro-active.
-      
-      Return as a JSON object: {"title": "...", "body": "..."}`;
-
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [{ role: "user", content: prompt }],
-        model: "llama-3.3-70b-versatile",
-        response_format: { type: "json_object" },
-      });
-
-      const content = chatCompletion.choices[0]?.message?.content;
-      if (!content) throw new Error("Failed to generate daily recap");
-
-      return JSON.parse(content);
-    } catch (error) {
-      console.error("Groq Daily Recap Error:", error);
-      return {
-        title: "🌙 Evening Inventory Recap",
-        body: `You added ${newProducts.length} new items today. Keep up the great work reducing waste!`,
-      };
-    }
-  }
 
   async analyzeReceipt(base64Image: string) {
     try {
