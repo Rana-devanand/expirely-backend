@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../common/service/supabase.admin";
 import bcrypt from "bcryptjs";
 import { createUserTokens } from "../../common/service/passport-jwt.service";
 import { sendEmail, sendRawEmail } from "../../common/service/email.service";
+import createHttpError from "http-errors";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your_fallback_secret";
 const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -191,10 +192,16 @@ export class UserService {
 
   async socialLogin(payload: {
     provider: string;
-    idToken: string;
+    idToken?: string;
+    token?: string;
     accessToken?: string;
   }) {
-    const { provider, idToken } = payload;
+    const provider = payload.provider;
+    const idToken = payload.idToken || payload.token;
+
+    if (!idToken) {
+      throw new Error("Google ID token is required");
+    }
 
     if (provider !== "google") {
       throw new Error("Unsupported provider");

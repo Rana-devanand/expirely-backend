@@ -15,6 +15,7 @@ import { initPassport } from "./app/common/service/passport-jwt.service";
 import { schedulerService } from "./app/common/service/scheduler.service";
 import { notificationWorker } from "./app/modules/notification/notification.worker";
 import { initFirebase } from "./app/common/service/fcm.service";
+import { initializeCommunitySocket } from "./app/modules/community/community.socket";
 
 const app: Express = express();
 const port = Number(process.env.PORT) || 5000;
@@ -71,11 +72,20 @@ const setupApp = () => {
       );
     }
   }
-  // Production (Vercel): Cron jobs are handled via /api/cron/* routes
-  // configured in vercel.json. No persistent process needed.
 
   // ── Routes
   app.use("/api", routes);
+
+  // Express 5 no longer accepts bare "*" suffixes in string routes.
+  // Register the fallback only in production; locally Socket.IO owns this path.
+  if (isVercelRuntime) {
+    app.all(/^\/socket\.io(?:\/.*)?$/, (_req: Request, res: Response) => {
+      res.status(200).json({
+        status: "info",
+        message: "Socket.IO server is not active on serverless environment.",
+      });
+    });
+  }
 
   // ── Root route
   app.get("/", (_req: Request, res: Response) => {
@@ -89,9 +99,11 @@ const setupApp = () => {
 // Execute Setup
 setupApp();
 
-// ── Start Server (Local Only)
-if (process.env.NODE_ENV !== "production") {
+// Persistent hosts such as Render need a listening HTTP server. Vercel imports
+// the Express app as a serverless handler and must not call listen().
+if (!isVercelRuntime) {
   const server = http.createServer(app);
+  initializeCommunitySocket(server);
   server.listen(port, "0.0.0.0", () => {
     console.log("-----------------------------------------");
     console.log(`✅ Server is running on port ${port}`);

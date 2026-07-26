@@ -17,11 +17,16 @@ export class NotificationWorker {
         const message = await queueService.read();
 
         if (message) {
-          await this.processMessage(message);
-          await queueService.archive(message.msgid);
+          try {
+            await this.processMessage(message);
+          } catch (procErr: any) {
+            console.error(`⚠️ Message ${message.msgid} failed during processing:`, procErr.message || procErr);
+          } finally {
+            await queueService.archive(message.msgid);
+          }
         } else {
-          // No messages, wait 5 seconds before polling again
-          await new Promise((resolve) => setTimeout(resolve, 5000));
+          // No messages, wait 30 seconds before polling again to keep CPU & DB connections free
+          await new Promise((resolve) => setTimeout(resolve, 30000));
         }
       } catch (error) {
         console.error("❌ Worker Error:", error);

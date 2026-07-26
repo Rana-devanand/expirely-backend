@@ -90,3 +90,23 @@ export const getAllCategories = async (userId: string) => {
   if (error) throw new Error(error.message);
   return data.map(mapRowToCategory);
 };
+
+export const getAdminCategories = async () => {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*, users(email, username)")
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
+};
+
+export const adminDeleteCategory = async (categoryId: string) => {
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", categoryId);
+
+  if (error) throw new Error(error.message);
+  return { deleted_count: 1 };
+};

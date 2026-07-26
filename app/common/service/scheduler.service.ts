@@ -65,8 +65,8 @@ export class SchedulerService {
       cronOptions,
     );
 
-    // 4. Daily reminder scan: every minute, using each user's own timezone + reminder time
-    cron.schedule("* * * * *", () => {
+    // 4. Daily reminder scan: every 1 hour, using each user's own timezone + reminder time
+    cron.schedule("0 * * * *", () => {
       void this.scanDueDailyReminders();
     });
 

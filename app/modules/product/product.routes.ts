@@ -7,9 +7,11 @@ const router = Router();
 
 // Require authenticated user for all product routes
 router.get("/admin", roleAuth(["ADMIN"]), productController.getAdminProducts);
+router.get("/admin/:id", roleAuth(["ADMIN"]), productController.getAdminProductById);
 
 router.use(roleAuth(["ADMIN", "USER"]));
 
+router.get("/export/pdf", productController.exportUserProductsPDF);
 router.post("/", productController.createProduct);
 router.get("/", productController.getAllProducts);
 router.get("/insight", productController.getDynamicInsight);

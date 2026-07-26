@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: expirely-backend
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/index.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production

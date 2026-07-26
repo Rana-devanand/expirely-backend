@@ -27,3 +27,13 @@ export const downloadReport = asyncHandler(async (req: Request, res: Response) =
     throw new Error("Unsupported format. Use CSV for now.");
   }
 });
+
+export const sendUserReport = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.body;
+  if (!userId) {
+    res.status(400);
+    throw new Error("User ID is required");
+  }
+  const result = await reportService.sendUserReportEmail(userId);
+  res.send(createResponse(result));
+});
