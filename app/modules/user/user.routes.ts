@@ -9,6 +9,7 @@ router.post("/login", userController.login);
 router.post("/refresh", userController.refresh);
 router.post("/me", userController.me);
 router.post("/social-login", userController.socialLogin);
+router.get("/web-login", userController.webLogin);
 router.post("/forgot-password", userController.forgotPassword);
 router.post("/reset-password", userController.resetPassword);
 router.post("/unsubscribe", userController.unsubscribe);

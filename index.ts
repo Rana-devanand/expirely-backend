@@ -46,11 +46,20 @@ const setupApp = () => {
     schedulerService.init();
     void notificationWorker.start();
   }
-  // Production (Vercel): Cron jobs are handled via /api/cron/* routes
-  // configured in vercel.json. No persistent process needed.
 
   // ── Routes
   app.use("/api", routes);
+
+  // Express 5 no longer accepts bare "*" suffixes in string routes.
+  // Register the fallback only in production; locally Socket.IO owns this path.
+  if (process.env.NODE_ENV === "production") {
+    app.all(/^\/socket\.io(?:\/.*)?$/, (_req: Request, res: Response) => {
+      res.status(200).json({
+        status: "info",
+        message: "Socket.IO server is not active on serverless environment.",
+      });
+    });
+  }
 
   // ── Root route
   app.get("/", (_req: Request, res: Response) => {

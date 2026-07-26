@@ -43,7 +43,22 @@ export const messages = asyncHandler(async (req: Request, res: Response) => {
   res.send(createResponse(await service.getMessages(userId(req), String(req.params.id))));
 });
 export const send = asyncHandler(async (req: Request, res: Response) => {
-  res.status(201).send(createResponse(await service.sendMessage(userId(req), String(req.params.id), req.body)));
+  const senderId = userId(req);
+  const conversationId = String(req.params.id);
+  const message = await service.sendMessage(senderId, conversationId, req.body);
+  void service
+    .sendCommunityMessagePush(senderId, conversationId, message)
+    .catch((error) =>
+      console.error("[Community Push] HTTP send failed:", error.message),
+    );
+  res.status(201).send(createResponse(message));
+});
+export const seen = asyncHandler(async (req: Request, res: Response) => {
+  res.send(
+    createResponse(
+      await service.markConversationSeen(userId(req), String(req.params.id)),
+    ),
+  );
 });
 export const offer = asyncHandler(async (req: Request, res: Response) => {
   res.send(createResponse(await service.respondToOffer(userId(req), String(req.params.messageId), req.body.status)));
