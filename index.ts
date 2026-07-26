@@ -19,6 +19,7 @@ import { initializeCommunitySocket } from "./app/modules/community/community.soc
 
 const app: Express = express();
 const port = Number(process.env.PORT) || 5000;
+const isVercelRuntime = Boolean(process.env.VERCEL);
 
 // ── Standard Middlewares
 app.use(cors({ origin: "*" }));
@@ -41,8 +42,8 @@ const setupApp = () => {
   initPassport();
   app.use(passport.initialize());
 
-  if (process.env.NODE_ENV !== "production") {
-    // Local dev: use node-cron + worker for convenience
+  if (!isVercelRuntime) {
+    // Persistent runtimes (local/Render/Railway) can safely run workers.
     schedulerService.init();
     void notificationWorker.start();
   }
@@ -52,7 +53,7 @@ const setupApp = () => {
 
   // Express 5 no longer accepts bare "*" suffixes in string routes.
   // Register the fallback only in production; locally Socket.IO owns this path.
-  if (process.env.NODE_ENV === "production") {
+  if (isVercelRuntime) {
     app.all(/^\/socket\.io(?:\/.*)?$/, (_req: Request, res: Response) => {
       res.status(200).json({
         status: "info",
@@ -73,8 +74,9 @@ const setupApp = () => {
 // Execute Setup
 setupApp();
 
-// ── Start Server (Local Only)
-if (process.env.NODE_ENV !== "production") {
+// Persistent hosts such as Render need a listening HTTP server. Vercel imports
+// the Express app as a serverless handler and must not call listen().
+if (!isVercelRuntime) {
   const server = http.createServer(app);
   initializeCommunitySocket(server);
   server.listen(port, "0.0.0.0", () => {
