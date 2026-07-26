@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon --exec ts-node index.ts",
     "migrate": "ts-node app/migrate.ts",
-    "build": "tsc && powershell -Command \"Copy-Item -Path 'app/templates/*' -Destination 'dist/app/templates' -Recurse -Force\"",
+    "build": "tsc && node scripts/copy-templates.js",
+    "prestart": "npm run build",
     "start": "node dist/index.js"
   },
   "keywords": [],

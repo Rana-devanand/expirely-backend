@@ -29,6 +29,7 @@ router.post("/conversations", controller.startChat);
 router.get("/conversations", controller.conversations);
 router.get("/conversations/:id/messages", controller.messages);
 router.post("/conversations/:id/messages", controller.send);
+router.post("/conversations/:id/seen", controller.seen);
 router.patch("/offers/:messageId", controller.offer);
 router.post("/ai-advice", controller.aiAdvice);
 export default router;

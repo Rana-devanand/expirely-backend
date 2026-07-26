@@ -36,6 +36,57 @@ async function notifyAdminsOfUserEvent(eventTitle: string, eventMessage: string,
 
 
 export class UserController {
+  async webLogin(req: Request, res: Response) {
+    try {
+      const token = String(req.query.token || "").trim();
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: "Authentication token is required",
+        });
+      }
+
+      const { verifyToken } =
+        await import("../../common/service/passport-jwt.service");
+      const decoded = verifyToken(token) as { id?: string };
+      if (!decoded?.id) throw new Error("Invalid authentication token");
+
+      const user = await userService.getProfile(decoded.id);
+      if (!user || user.status !== "active") {
+        return res.status(403).json({
+          success: false,
+          message: "This account cannot access the web application",
+        });
+      }
+
+      let frontendBaseUrl =
+        process.env.FRONTEND_URL ||
+        process.env.WEB_URL ||
+        "https://expirely.foocusedai.com";
+
+      if (
+        process.env.NODE_ENV !== "production" &&
+        !process.env.FRONTEND_URL &&
+        !process.env.WEB_URL
+      ) {
+        frontendBaseUrl = `${req.protocol}://${req.hostname}:3000`;
+      }
+
+      const redirectUrl = new URL(
+        "/autologin",
+        frontendBaseUrl.replace(/\/+$/, ""),
+      );
+      redirectUrl.searchParams.set("token", token);
+      res.setHeader("Cache-Control", "no-store");
+      return res.redirect(302, redirectUrl.toString());
+    } catch {
+      return res.status(401).json({
+        success: false,
+        message: "Your mobile session is invalid or has expired",
+      });
+    }
+  }
+
   async signUp(req: Request, res: Response) {
     try {
       const result = await userService.signUp(req.body);
