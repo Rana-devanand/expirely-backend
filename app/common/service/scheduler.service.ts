@@ -32,45 +32,34 @@ const addDaysToDateString = (dateString: string, days: number) => {
 };
 
 export class SchedulerService {
-  init() {
+  init(options: { enableQueueJobs?: boolean } = {}) {
     const cronOptions = { timezone: "Asia/Kolkata" };
 
-    // 1. Morning Scan: 9 AM IST (Items expiring in 3 days)
-    cron.schedule(
-      "0 9 * * *",
-      () => {
+    if (options.enableQueueJobs) {
+      cron.schedule("0 9 * * *", () => {
         console.log("Running 9 AM Morning Scan...");
         this.scanExpiringItems(3);
-      },
-      cronOptions,
-    );
-
-    // 2. Afternoon Scan: 1 PM IST (Items expiring in 7 days)
-    cron.schedule(
-      "0 13 * * *",
-      () => {
+      }, cronOptions);
+      cron.schedule("0 13 * * *", () => {
         console.log("Running 1 PM Afternoon Scan...");
         this.scanExpiringItems(7);
-      },
-      cronOptions,
-    );
-
-    // 3. Evening Scan: 8 PM IST (Recap of items added today)
-    cron.schedule(
-      "0 20 * * *",
-      () => {
+      }, cronOptions);
+      cron.schedule("0 20 * * *", () => {
         console.log("Running 8 PM Evening Recap Scan...");
         this.scanNewItemsToday();
-      },
-      cronOptions,
-    );
+      }, cronOptions);
+    }
 
     // 4. Daily reminder scan: every 1 hour, using each user's own timezone + reminder time
     cron.schedule("0 * * * *", () => {
       void this.scanDueDailyReminders();
     });
 
-    console.log("Scheduler Service Initialized (Timezone: Asia/Kolkata).");
+    console.log(
+      `Scheduler Service Initialized (Timezone: Asia/Kolkata, queue jobs: ${
+        options.enableQueueJobs ? "enabled" : "disabled"
+      }).`,
+    );
   }
 
   private async scanExpiringItems(days: number) {

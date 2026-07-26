@@ -44,8 +44,16 @@ const setupApp = () => {
 
   if (!isVercelRuntime) {
     // Persistent runtimes (local/Render/Railway) can safely run workers.
-    schedulerService.init();
-    void notificationWorker.start();
+    const enableNotificationQueue =
+      process.env.ENABLE_NOTIFICATION_QUEUE === "true";
+    schedulerService.init({ enableQueueJobs: enableNotificationQueue });
+    if (enableNotificationQueue) {
+      void notificationWorker.start();
+    } else {
+      console.log(
+        "Notification queue worker disabled. Set ENABLE_NOTIFICATION_QUEUE=true after configuring a Supabase Session Pooler URL.",
+      );
+    }
   }
 
   // ── Routes

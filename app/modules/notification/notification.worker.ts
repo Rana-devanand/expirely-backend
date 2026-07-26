@@ -9,6 +9,13 @@ export class NotificationWorker {
 
   async start() {
     if (this.isRunning) return;
+    const queueReady = await queueService.initialize();
+    if (!queueReady) {
+      console.warn(
+        "Notification Worker disabled because the PostgreSQL queue is unavailable.",
+      );
+      return;
+    }
     this.isRunning = true;
     console.log("🚀 Notification Worker started...");
 
