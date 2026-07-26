@@ -32,13 +32,14 @@ const addDaysToDateString = (dateString: string, days: number) => {
 };
 
 export class SchedulerService {
-  init() {
+  init(options: { enableQueueJobs?: boolean } = {}) {
     const cronOptions = { timezone: "Asia/Kolkata" };
 
     // 1. Morning Scan: 9 AM IST (Items expiring in 3 days)
     cron.schedule(
       "0 9 * * *",
       () => {
+        if (!options.enableQueueJobs) return;
         console.log("Running 9 AM Morning Scan...");
         this.scanExpiringItems(3);
       },
@@ -49,6 +50,7 @@ export class SchedulerService {
     cron.schedule(
       "0 13 * * *",
       () => {
+        if (!options.enableQueueJobs) return;
         console.log("Running 1 PM Afternoon Scan...");
         this.scanExpiringItems(7);
       },
@@ -59,6 +61,7 @@ export class SchedulerService {
     cron.schedule(
       "0 20 * * *",
       () => {
+        if (!options.enableQueueJobs) return;
         console.log("Running 8 PM Evening Recap Scan...");
         this.scanNewItemsToday();
       },
@@ -70,7 +73,11 @@ export class SchedulerService {
       void this.scanDueDailyReminders();
     });
 
-    console.log("Scheduler Service Initialized (Timezone: Asia/Kolkata).");
+    console.log(
+      `Scheduler Service Initialized (Timezone: Asia/Kolkata, queue jobs: ${
+        options.enableQueueJobs ? "enabled" : "disabled"
+      }).`,
+    );
   }
 
   private async scanExpiringItems(days: number) {
