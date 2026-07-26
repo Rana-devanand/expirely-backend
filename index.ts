@@ -18,6 +18,19 @@ import { initFirebase } from "./app/common/service/fcm.service";
 
 const app: Express = express();
 const port = Number(process.env.PORT) || 5000;
+const isVercelRuntime = Boolean(process.env.VERCEL);
+const isRenderRuntime = Boolean(process.env.RENDER);
+
+const usesSupabaseDirectDatabaseUrl = () => {
+  try {
+    const hostname = new URL(
+      process.env.SUPABASE_CONNECTION_STRING || "",
+    ).hostname;
+    return hostname.startsWith("db.") && hostname.endsWith(".supabase.co");
+  } catch {
+    return false;
+  }
+};
 
 // ── Standard Middlewares
 app.use(cors({ origin: "*" }));
@@ -40,10 +53,23 @@ const setupApp = () => {
   initPassport();
   app.use(passport.initialize());
 
-  if (process.env.NODE_ENV !== "production") {
-    // Local dev: use node-cron + worker for convenience
-    schedulerService.init();
-    void notificationWorker.start();
+  if (!isVercelRuntime) {
+    // Persistent runtimes (local/Render/Railway) can safely run workers.
+    const directDatabaseBlocked =
+      isRenderRuntime && usesSupabaseDirectDatabaseUrl();
+    const enableNotificationQueue =
+      process.env.ENABLE_NOTIFICATION_QUEUE === "true" &&
+      !directDatabaseBlocked;
+    schedulerService.init({ enableQueueJobs: enableNotificationQueue });
+    if (enableNotificationQueue) {
+      void notificationWorker.start();
+    } else {
+      console.log(
+        directDatabaseBlocked
+          ? "Notification queue worker disabled: Render cannot use the IPv6-only Supabase direct database URL. Configure the Session Pooler URL."
+          : "Notification queue worker disabled. Set ENABLE_NOTIFICATION_QUEUE=true after configuring a Supabase Session Pooler URL.",
+      );
+    }
   }
   // Production (Vercel): Cron jobs are handled via /api/cron/* routes
   // configured in vercel.json. No persistent process needed.
