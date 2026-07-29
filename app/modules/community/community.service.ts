@@ -1,6 +1,10 @@
 import createHttpError from "http-errors";
 import { supabaseAdmin } from "../../common/service/supabase.admin";
-import { CreateCommunityListing, SendCommunityMessage } from "./community.model";
+import {
+  CreateCommunityListing,
+  SendCommunityMessage,
+  UpdateCommunityChatSettings,
+} from "./community.model";
 import { sendPushNotification } from "../../common/service/fcm.service";
 
 const listingSelect =
@@ -26,15 +30,20 @@ async function addLikeState(listings: any[], userId?: string) {
 }
 
 export async function getListings(userId: string, search?: string, category?: string, sellerId?: string) {
-  const [{ data: follows, error: followError }, { data: blocks, error: blockError }] =
-    await Promise.all([
+  let follows: any[] = [];
+  let blocks: any[] = [];
+  try {
+    const [followsRes, blocksRes] = await Promise.all([
       supabaseAdmin.from("community_follows").select("following_id").eq("follower_id", userId),
       supabaseAdmin.from("community_blocks").select("blocked_id").eq("blocker_id", userId),
     ]);
-  if (followError) throw createHttpError(500, followError.message);
-  if (blockError) throw createHttpError(500, blockError.message);
-  const followedIds = new Set((follows || []).map((row: any) => row.following_id));
-  const blockedIds = new Set((blocks || []).map((row: any) => row.blocked_id));
+    if (followsRes.data) follows = followsRes.data;
+    if (blocksRes.data) blocks = blocksRes.data;
+  } catch (e) {
+    console.error("[getListings] Error fetching follows/blocks:", e);
+  }
+  const followedIds = new Set(follows.map((row: any) => row.following_id));
+  const blockedIds = new Set(blocks.map((row: any) => row.blocked_id));
   let query = supabaseAdmin
     .from("community_listings")
     .select(listingSelect)
@@ -534,7 +543,6 @@ export async function getConversations(userId: string) {
         : conversation.seller_unread_count,
   }));
 }
-
 export async function assertParticipant(userId: string, conversationId: string) {
   const { data, error } = await supabaseAdmin.from("community_conversations")
     .select("*").eq("id", conversationId).single();
@@ -543,33 +551,166 @@ export async function assertParticipant(userId: string, conversationId: string) 
   return data;
 }
 
-export async function getMessages(userId: string, conversationId: string) {
+export async function getConversationSettings(
+  userId: string,
+  conversationId: string,
+) {
   await assertParticipant(userId, conversationId);
-  const { data, error } = await supabaseAdmin.from("community_messages")
-    .select("*, sender:users!community_messages_sender_id_fkey(id,username,avatar_url)")
-    .eq("conversation_id", conversationId).order("created_at");
+  const { data, error } = await supabaseAdmin
+    .from("community_conversation_settings")
+    .select(
+      "conversation_id,auto_delete_mode,auto_delete_duration_seconds,settings,updated_at",
+    )
+    .eq("conversation_id", conversationId)
+    .maybeSingle();
   if (error) throw createHttpError(500, error.message);
-  return data || [];
+  return (
+    data || {
+      conversation_id: conversationId,
+      auto_delete_mode: null,
+      auto_delete_duration_seconds: null,
+      settings: {},
+      updated_at: null,
+    }
+  );
+}
+
+export async function updateConversationSettings(
+  userId: string,
+  conversationId: string,
+  input: UpdateCommunityChatSettings,
+) {
+  await assertParticipant(userId, conversationId);
+  const allowedModes = new Set([
+    "one_hour",
+    "twenty_four_hours",
+    "custom",
+  ]);
+  if (!allowedModes.has(input.autoDeleteMode)) {
+    throw createHttpError(400, "Select a valid auto-delete option");
+  }
+
+  let durationSeconds =
+    input.autoDeleteMode === "one_hour"
+      ? 3600
+      : input.autoDeleteMode === "twenty_four_hours"
+        ? 86400
+        : 0;
+  if (input.autoDeleteMode === "custom") {
+    const duration = Number(input.customDuration);
+    if (!Number.isInteger(duration) || duration < 1) {
+      throw createHttpError(400, "Custom duration must be a positive integer");
+    }
+    if (input.customUnit !== "hours" && input.customUnit !== "days") {
+      throw createHttpError(400, "Custom duration unit must be hours or days");
+    }
+    durationSeconds =
+      duration * (input.customUnit === "days" ? 86400 : 3600);
+  }
+  if (durationSeconds < 3600 || durationSeconds > 31536000) {
+    throw createHttpError(
+      400,
+      "Auto-delete duration must be between 1 hour and 365 days",
+    );
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("community_conversation_settings")
+    .upsert(
+      {
+        conversation_id: conversationId,
+        auto_delete_mode: input.autoDeleteMode,
+        auto_delete_duration_seconds: durationSeconds,
+        settings:
+          input.autoDeleteMode === "custom"
+            ? {
+                custom_duration: Number(input.customDuration),
+                custom_unit: input.customUnit,
+              }
+            : {},
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "conversation_id" },
+    )
+    .select(
+      "conversation_id,auto_delete_mode,auto_delete_duration_seconds,settings,updated_at",
+    )
+    .single();
+  if (error) throw createHttpError(500, error.message);
+  return data;
+}
+
+const messageSelect = `
+  *,
+  sender:users!community_messages_sender_id_fkey(id,username,avatar_url),
+  reply_to_message:community_messages!reply_to_message_id(id,body,message_type,offer_amount,media_url,sender_id,sender:users!community_messages_sender_id_fkey(id,username,avatar_url))
+`;
+
+export async function getMessages(
+  userId: string,
+  conversationId: string,
+  before?: string,
+  limit: number = 100,
+) {
+  await assertParticipant(userId, conversationId);
+  const parsedLimit = Math.min(Math.max(1, Number(limit) || 100), 100);
+  let query = supabaseAdmin
+    .from("community_messages")
+    .select(messageSelect)
+    .eq("conversation_id", conversationId);
+
+  if (before) {
+    query = query.lt("created_at", before);
+  }
+
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .limit(parsedLimit);
+
+  if (error) throw createHttpError(500, error.message);
+  return (data || []).reverse();
 }
 
 export async function sendMessage(
   userId: string, conversationId: string, input: SendCommunityMessage,
 ) {
   const conversation = await assertParticipant(userId, conversationId);
+  if (input.clientMessageId) {
+    const { data: existing } = await supabaseAdmin
+      .from("community_messages")
+      .select(messageSelect)
+      .eq("sender_id", userId)
+      .eq("client_message_id", input.clientMessageId)
+      .maybeSingle();
+    if (existing) return existing;
+  }
   const body = input.body?.trim();
   const mediaUrl = input.mediaUrl?.trim();
   const offerAmount = input.offerAmount == null ? null : Number(input.offerAmount);
   if (!body && !mediaUrl && (!Number.isFinite(offerAmount) || Number(offerAmount) < 0))
     throw createHttpError(400, "Enter a message, image, or valid offer");
+  if (input.replyToMessageId) {
+    const { data: repliedMessage } = await supabaseAdmin
+      .from("community_messages")
+      .select("conversation_id")
+      .eq("id", input.replyToMessageId)
+      .maybeSingle();
+    if (!repliedMessage || repliedMessage.conversation_id !== conversationId) {
+      throw createHttpError(400, "The replied message is not in this conversation");
+    }
+  }
   const { data, error } = await supabaseAdmin.from("community_messages").insert({
     conversation_id: conversationId,
     sender_id: userId,
     body: body || null,
     message_type: offerAmount !== null ? "offer" : mediaUrl ? "media" : "text",
     media_url: mediaUrl || null,
+    reply_to_message_id: input.replyToMessageId || null,
+    client_message_id: input.clientMessageId || null,
     offer_amount: offerAmount,
     offer_status: offerAmount !== null ? "pending" : null,
-  }).select("*, sender:users!community_messages_sender_id_fkey(id,username,avatar_url)").single();
+  }).select(messageSelect).single();
   if (error) throw createHttpError(500, error.message);
   const preview = offerAmount !== null
     ? `Offer: ${offerAmount}`
@@ -591,6 +732,91 @@ export async function sendMessage(
           : (conversation.seller_unread_count || 0) + 1,
     }).eq("id", conversationId);
   return data;
+}
+
+export async function enqueueMessage(
+  userId: string,
+  conversationId: string,
+  input: SendCommunityMessage,
+  idempotencyKey: string,
+) {
+  await assertParticipant(userId, conversationId);
+  const key = String(idempotencyKey || "").trim();
+  if (!key || key.length < 8 || key.length > 128) {
+    throw createHttpError(400, "A valid idempotency key is required");
+  }
+  const body = input.body?.trim();
+  const mediaUrl = input.mediaUrl?.trim();
+  const offerAmount =
+    input.offerAmount == null ? null : Number(input.offerAmount);
+  if (
+    !body &&
+    !mediaUrl &&
+    (!Number.isFinite(offerAmount) || Number(offerAmount) < 0)
+  ) {
+    throw createHttpError(400, "Enter a message, image, or valid offer");
+  }
+  if (input.replyToMessageId) {
+    const { data: repliedMessage } = await supabaseAdmin
+      .from("community_messages")
+      .select("conversation_id")
+      .eq("id", input.replyToMessageId)
+      .maybeSingle();
+    if (!repliedMessage || repliedMessage.conversation_id !== conversationId) {
+      throw createHttpError(400, "The replied message is not in this conversation");
+    }
+  }
+
+  const payload = {
+    body: body || undefined,
+    mediaUrl: mediaUrl || undefined,
+    offerAmount,
+    replyToMessageId: input.replyToMessageId,
+    clientMessageId: key,
+  };
+  const { data, error } = await supabaseAdmin
+    .from("community_message_queue")
+    .upsert(
+      {
+        sender_id: userId,
+        conversation_id: conversationId,
+        idempotency_key: key,
+        payload,
+      },
+      { onConflict: "sender_id,idempotency_key", ignoreDuplicates: true },
+    )
+    .select("id,status,idempotency_key,attempt_count,last_error,created_at")
+    .maybeSingle();
+  if (error) throw createHttpError(500, error.message);
+  if (data) return data;
+
+  const { data: existing, error: existingError } = await supabaseAdmin
+    .from("community_message_queue")
+    .select("id,status,idempotency_key,attempt_count,last_error,created_at")
+    .eq("sender_id", userId)
+    .eq("idempotency_key", key)
+    .single();
+  if (existingError) throw createHttpError(500, existingError.message);
+  return existing;
+}
+
+export async function retryQueuedMessage(userId: string, jobId: string) {
+  const { data, error } = await supabaseAdmin.rpc(
+    "retry_community_message_job",
+    { job_id: jobId, requesting_user_id: userId },
+  );
+  if (error) throw createHttpError(500, error.message);
+  if (!data) throw createHttpError(404, "Failed message was not found");
+  return data;
+}
+
+export async function clearConversation(userId: string, conversationId: string) {
+  await assertParticipant(userId, conversationId);
+  const { data, error } = await supabaseAdmin.rpc("clear_community_chat", {
+    target_conversation_id: conversationId,
+  });
+  if (error) throw createHttpError(500, error.message);
+  return { deletedCount: Number(data || 0) };
 }
 
 export async function markMessageDelivered(messageId: string) {
@@ -624,7 +850,6 @@ export async function markConversationSeen(userId: string, conversationId: strin
     .eq("id", conversationId);
   return data || [];
 }
-
 export async function sendCommunityMessagePush(
   senderId: string,
   conversationId: string,

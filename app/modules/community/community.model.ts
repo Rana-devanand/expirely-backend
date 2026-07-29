@@ -14,4 +14,17 @@ export interface SendCommunityMessage {
   body?: string;
   offerAmount?: number;
   mediaUrl?: string;
+  replyToMessageId?: string;
+  clientMessageId?: string;
+}
+
+export type CommunityAutoDeleteMode =
+  | "one_hour"
+  | "twenty_four_hours"
+  | "custom";
+
+export interface UpdateCommunityChatSettings {
+  autoDeleteMode: CommunityAutoDeleteMode;
+  customDuration?: number;
+  customUnit?: "hours" | "days";
 }

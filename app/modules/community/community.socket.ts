@@ -49,50 +49,18 @@ export function initializeCommunitySocket(server: HttpServer) {
 
     socket.on("message:send", async (payload, acknowledge) => {
       try {
-        let message = await communityService.sendMessage(
+        const job = await communityService.enqueueMessage(
           authenticatedUserId,
           payload.conversationId,
           {
             body: payload.body,
             offerAmount: payload.offerAmount,
             mediaUrl: payload.mediaUrl,
+            replyToMessageId: payload.replyToMessageId,
           },
+          payload.clientMessageId,
         );
-        const conversation = await communityService.assertParticipant(
-          authenticatedUserId,
-          payload.conversationId,
-        );
-        const recipientId =
-          conversation.buyer_id === authenticatedUserId
-            ? conversation.seller_id
-            : conversation.buyer_id;
-        const recipientSockets = await io
-          .in(`user:${recipientId}`)
-          .fetchSockets();
-        const recipientActivelyViewing = recipientSockets.some(
-          (recipientSocket) =>
-            recipientSocket.data.activeCommunityConversation ===
-            payload.conversationId,
-        );
-        if (recipientSockets.length > 0) {
-          const delivered = await communityService.markMessageDelivered(message.id);
-          if (delivered) message = { ...message, ...delivered };
-        }
-        io.to(`conversation:${payload.conversationId}`)
-          .to(`user:${recipientId}`)
-          .emit("message:new", message);
-        if (!recipientActivelyViewing) {
-          void communityService
-            .sendCommunityMessagePush(
-              authenticatedUserId,
-              payload.conversationId,
-              message,
-            )
-            .catch((error) =>
-              console.error("[Community Push] Failed:", error.message),
-            );
-        }
-        acknowledge?.({ success: true, data: message });
+        acknowledge?.({ success: true, data: job });
       } catch (error: any) {
         acknowledge?.({ success: false, message: error.message });
       }

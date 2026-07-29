@@ -16,6 +16,7 @@ import { schedulerService } from "./app/common/service/scheduler.service";
 import { notificationWorker } from "./app/modules/notification/notification.worker";
 import { initFirebase } from "./app/common/service/fcm.service";
 import { initializeCommunitySocket } from "./app/modules/community/community.socket";
+import { communityMessageWorker } from "./app/modules/community/community-message.worker";
 
 const app: Express = express();
 const port = Number(process.env.PORT) || 5000;
@@ -103,7 +104,10 @@ setupApp();
 // the Express app as a serverless handler and must not call listen().
 if (!isVercelRuntime) {
   const server = http.createServer(app);
-  initializeCommunitySocket(server);
+  const communityIo = initializeCommunitySocket(server);
+  if (process.env.ENABLE_COMMUNITY_MESSAGE_QUEUE !== "false") {
+    void communityMessageWorker.start(communityIo);
+  }
   server.listen(port, "0.0.0.0", () => {
     console.log("-----------------------------------------");
     console.log(`✅ Server is running on port ${port}`);

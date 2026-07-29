@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { supabase } from "../../config/supabase";
 import { queueService } from "./queue.service";
 import { sendPushNotification } from "./fcm.service";
+import { cleanupExpiredCommunityMessages } from "../../modules/community/community-cleanup.service";
 
 const formatLocalParts = (date: Date, timeZone: string) => {
   const formatter = new Intl.DateTimeFormat("en-CA", {
@@ -71,6 +72,13 @@ export class SchedulerService {
     // 4. Daily reminder scan: every 1 hour, using each user's own timezone + reminder time
     cron.schedule("0 * * * *", () => {
       void this.scanDueDailyReminders();
+    });
+
+    // Delete expired chat messages in small, indexed batches.
+    cron.schedule("*/5 * * * *", () => {
+      void cleanupExpiredCommunityMessages().catch((error) =>
+        console.error("[Community Cleanup] Failed:", error.message),
+      );
     });
 
     console.log(

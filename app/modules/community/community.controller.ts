@@ -40,18 +40,63 @@ export const conversations = asyncHandler(async (req: Request, res: Response) =>
   res.send(createResponse(await service.getConversations(userId(req))));
 });
 export const messages = asyncHandler(async (req: Request, res: Response) => {
-  res.send(createResponse(await service.getMessages(userId(req), String(req.params.id))));
+  const before = req.query.before ? String(req.query.before) : undefined;
+  const limit = req.query.limit ? Number(req.query.limit) : 100;
+  res.send(createResponse(await service.getMessages(userId(req), String(req.params.id), before, limit)));
 });
+export const chatSettings = asyncHandler(async (req: Request, res: Response) => {
+  res.send(
+    createResponse(
+      await service.getConversationSettings(
+        userId(req),
+        String(req.params.id),
+      ),
+    ),
+  );
+});
+export const updateChatSettings = asyncHandler(
+  async (req: Request, res: Response) => {
+    res.send(
+      createResponse(
+        await service.updateConversationSettings(
+          userId(req),
+          String(req.params.id),
+          req.body,
+        ),
+        "Chat settings updated",
+      ),
+    );
+  },
+);
 export const send = asyncHandler(async (req: Request, res: Response) => {
   const senderId = userId(req);
   const conversationId = String(req.params.id);
-  const message = await service.sendMessage(senderId, conversationId, req.body);
-  void service
-    .sendCommunityMessagePush(senderId, conversationId, message)
-    .catch((error) =>
-      console.error("[Community Push] HTTP send failed:", error.message),
-    );
-  res.status(201).send(createResponse(message));
+  const idempotencyKey = String(
+    req.headers["idempotency-key"] || req.body.clientMessageId || "",
+  );
+  const job = await service.enqueueMessage(
+    senderId,
+    conversationId,
+    req.body,
+    idempotencyKey,
+  );
+  res.status(202).send(createResponse(job, "Message queued"));
+});
+export const retryMessage = asyncHandler(async (req: Request, res: Response) => {
+  res.send(
+    createResponse(
+      await service.retryQueuedMessage(userId(req), String(req.params.jobId)),
+      "Message queued for retry",
+    ),
+  );
+});
+export const clearChat = asyncHandler(async (req: Request, res: Response) => {
+  res.send(
+    createResponse(
+      await service.clearConversation(userId(req), String(req.params.id)),
+      "Chat cleared",
+    ),
+  );
 });
 export const seen = asyncHandler(async (req: Request, res: Response) => {
   res.send(
