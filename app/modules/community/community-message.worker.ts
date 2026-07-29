@@ -29,7 +29,7 @@ export class CommunityMessageWorker {
   async start(io: Server) {
     if (this.running) return;
     this.running = true;
-    console.log(`[Community Queue] Worker started: ${this.workerId}`);
+    console.log(`⚡ [Community Queue Worker] Started & listening for queued messages... (Worker ID: ${this.workerId})`);
 
     while (this.running) {
       try {
@@ -43,9 +43,10 @@ export class CommunityMessageWorker {
           await wait(500);
           continue;
         }
+        console.log(`📦 [Community Queue Worker] Claimed ${jobs.length} message job(s) from database queue.`);
         await Promise.all(jobs.map((job) => this.process(io, job)));
       } catch (error: any) {
-        console.error("[Community Queue] Worker error:", error.message);
+        console.error("[Community Queue Worker] Worker loop error:", error.message);
         await wait(2000);
       }
     }
@@ -53,9 +54,11 @@ export class CommunityMessageWorker {
 
   stop() {
     this.running = false;
+    console.log(`🛑 [Community Queue Worker] Stopped (Worker ID: ${this.workerId})`);
   }
 
   private async process(io: Server, job: QueueJob) {
+    console.log(`🔄 [Community Queue Worker] Processing job [${job.id}] (Key: ${job.idempotency_key}, Sender: ${job.sender_id})`);
     try {
       let message = await communityService.sendMessage(
         job.sender_id,
@@ -96,6 +99,8 @@ export class CommunityMessageWorker {
         .eq("locked_by", this.workerId);
       if (completionError) throw completionError;
 
+      console.log(`✅ [Community Queue Worker] Job [${job.id}] completed successfully -> Message ID: ${message.id}`);
+
       io.to(`conversation:${job.conversation_id}`)
         .to(`user:${recipientId}`)
         .to(`user:${job.sender_id}`)
@@ -111,10 +116,11 @@ export class CommunityMessageWorker {
         void communityService
           .sendCommunityMessagePush(job.sender_id, job.conversation_id, message)
           .catch((error) =>
-            console.error("[Community Queue] Push failed:", error.message),
+            console.error("[Community Queue Worker] Push failed:", error.message),
           );
       }
     } catch (error: any) {
+      console.warn(`⚠️ [Community Queue Worker] Processing failed for job [${job.id}]: ${error.message}. Marking job status...`);
       const { data: failedJob, error: failError } = await supabaseAdmin.rpc(
         "fail_community_message_job",
         {
@@ -124,9 +130,10 @@ export class CommunityMessageWorker {
         },
       );
       if (failError) {
-        console.error("[Community Queue] Could not fail job:", failError.message);
+        console.error("[Community Queue Worker] Could not update failed job status:", failError.message);
         return;
       }
+      console.warn(`❌ [Community Queue Worker] Job [${job.id}] marked as ${failedJob?.status || "failed"} (Attempt #${failedJob?.attempt_count})`);
       io.to(`user:${job.sender_id}`).emit("message:queue_status", {
         jobId: job.id,
         clientMessageId: job.idempotency_key,

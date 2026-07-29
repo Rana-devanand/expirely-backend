@@ -102,6 +102,9 @@ setupApp();
 
 // Persistent hosts such as Render need a listening HTTP server. Vercel imports
 // the Express app as a serverless handler and must not call listen().
+
+// Persistent hosts such as Render need a listening HTTP server. Vercel imports
+// the Express app as a serverless handler and must not call listen().
 if (!isVercelRuntime) {
   const server = http.createServer(app);
   const communityIo = initializeCommunitySocket(server);
@@ -111,6 +114,7 @@ if (!isVercelRuntime) {
   server.listen(port, "0.0.0.0", () => {
     console.log("-----------------------------------------");
     console.log(`✅ Server is running on port ${port}`);
+    console.log(`🚀 Community Message Queue Worker: RUNNING`);
     console.log(`🔗 Local: http://localhost:${port}`);
     console.log(`🌎 Network: http://10.248.57.83:${port}`);
     console.log("-----------------------------------------");
