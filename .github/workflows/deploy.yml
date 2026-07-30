@@ -1,0 +1,65 @@
+name: Deploy Expirely Backend
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: expirely-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Oracle Cloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Deploy backend over SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.ORACLE_SSH_KEY }}
+          ORACLE_HOST: ${{ secrets.ORACLE_HOST }}
+          ORACLE_USER: ${{ secrets.ORACLE_USER }}
+          ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
+          APP_PATH: ${{ secrets.APP_PATH }}
+        run: |
+          set -e
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/oracle_deploy_key
+          chmod 600 ~/.ssh/oracle_deploy_key
+
+          ssh-keyscan -p "$ORACLE_PORT" -H "$ORACLE_HOST" >> ~/.ssh/known_hosts
+
+          ssh \
+            -i ~/.ssh/oracle_deploy_key \
+            -p "$ORACLE_PORT" \
+            "$ORACLE_USER@$ORACLE_HOST" \
+            "APP_PATH='$APP_PATH' bash -s" <<'REMOTE_SCRIPT'
+              set -euo pipefail
+
+              echo "Starting deployment..."
+
+              cd "$APP_PATH"
+
+              git fetch origin main
+              git reset --hard origin/main
+
+              npm ci
+
+              # Uncomment this line if your backend has a build script:
+              npm run build
+
+              pm2 restart expirely-backend --update-env
+              pm2 save
+
+              echo "Checking application health..."
+              sleep 3
+              curl --fail --silent --show-error \
+                https://api-expirely.foocusedai.com > /dev/null
+
+              echo "Deployment completed successfully."
+          REMOTE_SCRIPT
