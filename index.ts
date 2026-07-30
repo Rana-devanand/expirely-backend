@@ -117,6 +117,7 @@ if (!isVercelRuntime) {
     console.log(`🚀 Community Message Queue Worker: RUNNING`);
     console.log(`🔗 Local: http://localhost:${port}`);
     console.log(`🌎 Network: http://10.248.57.83:${port}`);
+    console.log("Auto deployement logs check");
     console.log("-----------------------------------------");
   });
 }
