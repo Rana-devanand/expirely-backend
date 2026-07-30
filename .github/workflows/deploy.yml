@@ -3,7 +3,7 @@ name: Deploy Expirely Backend
 on:
   push:
     branches:
-      - main
+      - master
 
 concurrency:
   group: expirely-production
