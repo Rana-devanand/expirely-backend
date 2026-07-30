@@ -25,7 +25,13 @@ jobs:
           APP_PATH: ${{ secrets.APP_PATH }}
 
         run: |
-          set -e
+          set -euo pipefail
+
+          test -n "$SSH_PRIVATE_KEY" || { echo "ORACLE_SSH_KEY is missing"; exit 1; }
+          test -n "$ORACLE_HOST" || { echo "ORACLE_HOST is missing"; exit 1; }
+          test -n "$ORACLE_USER" || { echo "ORACLE_USER is missing"; exit 1; }
+          test -n "$ORACLE_PORT" || { echo "ORACLE_PORT is missing"; exit 1; }
+          test -n "$APP_PATH" || { echo "APP_PATH is missing"; exit 1; }
 
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
@@ -33,7 +39,10 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/oracle_deploy_key
           chmod 600 ~/.ssh/oracle_deploy_key
 
-          ssh-keyscan -p "$ORACLE_PORT" -H "$ORACLE_HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan \
+            -p "$ORACLE_PORT" \
+            -H "$ORACLE_HOST" \
+            >> ~/.ssh/known_hosts
 
           ssh \
             -i ~/.ssh/oracle_deploy_key \
@@ -44,6 +53,36 @@ jobs:
 
               echo "Starting deployment..."
 
+              # Load NVM because non-interactive SSH sessions do not
+              # automatically load Node.js and npm installed through NVM.
+              export NVM_DIR="$HOME/.nvm"
+
+              if [ -s "$NVM_DIR/nvm.sh" ]; then
+                . "$NVM_DIR/nvm.sh"
+              else
+                echo "NVM was not found at $NVM_DIR/nvm.sh"
+                exit 1
+              fi
+
+              command -v node >/dev/null 2>&1 || {
+                echo "Node.js is not available"
+                exit 1
+              }
+
+              command -v npm >/dev/null 2>&1 || {
+                echo "npm is not available"
+                exit 1
+              }
+
+              command -v pm2 >/dev/null 2>&1 || {
+                echo "PM2 is not available"
+                exit 1
+              }
+
+              echo "Node version: $(node -v)"
+              echo "NPM version: $(npm -v)"
+              echo "PM2 version: $(pm2 -v)"
+
               cd "$APP_PATH"
 
               git fetch origin master
@@ -52,16 +91,25 @@ jobs:
               npm ci
               npm run build
 
-              pm2 restart expirely-backend --update-env || \
-              pm2 start dist/index.js --name expirely-backend
+              if pm2 describe expirely-backend >/dev/null 2>&1; then
+                pm2 restart expirely-backend --update-env
+              else
+                pm2 start dist/index.js --name expirely-backend
+              fi
 
               pm2 save
 
               echo "Checking application health..."
               sleep 5
 
-              curl --fail --silent --show-error \
-                https://api-expirely.foocusedai.com > /dev/null
+              curl \
+                --fail \
+                --silent \
+                --show-error \
+                --retry 3 \
+                --retry-delay 2 \
+                https://api-expirely.foocusedai.com \
+                > /dev/null
 
               echo "Deployment completed successfully."
           REMOTE_SCRIPT
