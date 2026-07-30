@@ -23,6 +23,7 @@ jobs:
           ORACLE_USER: ${{ secrets.ORACLE_USER }}
           ORACLE_PORT: ${{ secrets.ORACLE_PORT }}
           APP_PATH: ${{ secrets.APP_PATH }}
+
         run: |
           set -e
 
@@ -45,19 +46,20 @@ jobs:
 
               cd "$APP_PATH"
 
-              git fetch origin main
-              git reset --hard origin/main
+              git fetch origin master
+              git reset --hard origin/master
 
               npm ci
-
-              # Uncomment this line if your backend has a build script:
               npm run build
 
-              pm2 restart expirely-backend --update-env
+              pm2 restart expirely-backend --update-env || \
+              pm2 start dist/index.js --name expirely-backend
+
               pm2 save
 
               echo "Checking application health..."
-              sleep 3
+              sleep 5
+
               curl --fail --silent --show-error \
                 https://api-expirely.foocusedai.com > /dev/null
 
