@@ -47,6 +47,10 @@ jobs:
           ssh \
             -i ~/.ssh/oracle_deploy_key \
             -p "$ORACLE_PORT" \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=10 \
+            -o TCPKeepAlive=yes \
+            -o ConnectTimeout=30 \
             "$ORACLE_USER@$ORACLE_HOST" \
             "APP_PATH='$APP_PATH' bash -s" <<'REMOTE_SCRIPT'
               set -euo pipefail
@@ -85,23 +89,30 @@ jobs:
 
               cd "$APP_PATH"
 
+              echo "== Git =="
               git fetch origin master
               git reset --hard origin/master
 
-              npm ci
+              echo "== npm ci =="
+              npm ci --no-audit --no-fund
+
+              echo "== npm run build =="
               npm run build
 
               if pm2 describe expirely-backend >/dev/null 2>&1; then
+                echo "== pm2 restart expirely-backend --update-env =="
                 pm2 restart expirely-backend --update-env
               else
+                echo "== pm2 start dist/index.js --name expirely-backend =="
                 pm2 start dist/index.js --name expirely-backend
               fi
-
+              echo "== save =="
               pm2 save
 
               echo "Checking application health..."
               sleep 5
-
+              
+              echo "== health =="
               curl \
                 --fail \
                 --silent \
