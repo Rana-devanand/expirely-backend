@@ -32,7 +32,7 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
       fs.unlinkSync(req.file.path);
     }
 
-    res.send(createResponse({ imageUrl }, "Image uploaded successfully"));
+    res.send(createResponse({ imageUrl, sizeBytes: req.file.size }, "Image uploaded successfully"));
   } catch (error: any) {
     console.error("❌ Cloudinary upload failed:", error.message);
 
@@ -42,5 +42,24 @@ export const uploadImage = asyncHandler(async (req: Request, res: Response) => {
     }
 
     throw createHttpError(400, error.message);
+  }
+});
+
+export const uploadChatAttachment = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.file) throw createHttpError(400, "Unsupported or missing attachment");
+  if (req.file.mimetype.startsWith("video/") && req.file.size > 10 * 1024 * 1024) {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    throw createHttpError(413, "Video must be 10 MB or smaller");
+  }
+  try {
+    const fileUrl = await uploadService.uploadChatAttachment(req.file);
+    res.send(createResponse({
+      fileUrl,
+      fileName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      sizeBytes: req.file.size,
+    }, "Attachment uploaded successfully"));
+  } finally {
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
   }
 });

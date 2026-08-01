@@ -4,6 +4,7 @@ import { notificationService } from "../notification/notification.service";
 import { loggerService } from "../../common/service/logger.service";
 import { sendPushNotification } from "../../common/service/fcm.service";
 import { supabase } from "../../config/supabase";
+import { verifyToken } from "../../common/service/passport-jwt.service";
 
 async function notifyAdminsOfUserEvent(eventTitle: string, eventMessage: string, details: any) {
   try {
@@ -46,8 +47,6 @@ export class UserController {
         });
       }
 
-      const { verifyToken } =
-        await import("../../common/service/passport-jwt.service");
       const decoded = verifyToken(token) as { id?: string };
       if (!decoded?.id) throw new Error("Invalid authentication token");
 

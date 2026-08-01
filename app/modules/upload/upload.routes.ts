@@ -27,11 +27,31 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
+  fileFilter: (_req, file, cb) => cb(null, ["image/jpeg", "image/jpg", "image/png"].includes(file.mimetype)),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 10 * 1024 * 1024,
+  },
+});
+
+const chatUpload = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    const allowed = new Set([
+      "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif",
+      "video/mp4", "video/quicktime", "video/webm",
+      "application/pdf", "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-powerpoint",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ]);
+    cb(null, allowed.has(file.mimetype));
+  },
+  limits: {
+    fileSize: 25 * 1024 * 1024,
   },
 });
 
 router.post("/", upload.single("image"), uploadController.uploadImage);
+router.post("/chat", chatUpload.single("file"), uploadController.uploadChatAttachment);
 
 export default router;

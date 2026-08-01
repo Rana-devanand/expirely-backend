@@ -1,6 +1,7 @@
 import { type NextFunction, type Request, type Response } from "express";
 import expressAsyncHandler from "express-async-handler";
 import createHttpError from "http-errors";
+import { verifyToken } from "../service/passport-jwt.service";
 import process from "process";
 import { type IUser, type Role } from "../../modules/user/user.model";
 
@@ -37,7 +38,6 @@ export const roleAuth = (roles: Role[], publicRoutes: string[] = []) =>
       }
       try {
         console.log("Verifying token...");
-        const { verifyToken } = await import("../service/passport-jwt.service");
         const decodedUser = verifyToken(token);
         req.user = decodedUser as IUser;
         console.log("Token verified. User:", req.user.email);

@@ -12,6 +12,9 @@ type QueueJob = {
     body?: string;
     offerAmount?: number;
     mediaUrl?: string;
+    mediaSizeBytes?: number;
+    mediaMimeType?: string;
+    mediaFileName?: string;
     replyToMessageId?: string;
     clientMessageId: string;
   };

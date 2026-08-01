@@ -28,6 +28,8 @@ router.delete("/users/:userId/block", controller.unblock);
 router.post("/conversations", controller.startChat);
 router.get("/conversations", controller.conversations);
 router.get("/conversations/:id/messages", controller.messages);
+router.get("/conversations/:id/messages/search", controller.searchMessages);
+router.get("/conversations/:id/shared-content", controller.sharedContent);
 router.get("/conversations/:id/settings", controller.chatSettings);
 router.patch("/conversations/:id/settings", controller.updateChatSettings);
 router.post("/conversations/:id/messages", controller.send);

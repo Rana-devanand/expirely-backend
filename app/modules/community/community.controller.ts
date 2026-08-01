@@ -44,6 +44,12 @@ export const messages = asyncHandler(async (req: Request, res: Response) => {
   const limit = req.query.limit ? Number(req.query.limit) : 100;
   res.send(createResponse(await service.getMessages(userId(req), String(req.params.id), before, limit)));
 });
+export const searchMessages = asyncHandler(async (req: Request, res: Response) => {
+  res.send(createResponse(await service.searchMessages(userId(req), String(req.params.id), String(req.query.q || ""), Number(req.query.limit || 50))));
+});
+export const sharedContent = asyncHandler(async (req: Request, res: Response) => {
+  res.send(createResponse(await service.getSharedContent(userId(req), String(req.params.id))));
+});
 export const chatSettings = asyncHandler(async (req: Request, res: Response) => {
   res.send(
     createResponse(

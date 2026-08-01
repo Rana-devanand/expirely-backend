@@ -2,7 +2,7 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
-  fetch: globalThis.fetch,
+  fetch: globalThis.fetch as any,
 });
 
 export class GroqService {

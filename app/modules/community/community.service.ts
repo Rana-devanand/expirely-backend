@@ -644,7 +644,7 @@ export async function updateConversationSettings(
 const messageSelect = `
   *,
   sender:users!community_messages_sender_id_fkey(id,username,avatar_url),
-  reply_to_message:community_messages!reply_to_message_id(id,body,message_type,offer_amount,media_url,sender_id,sender:users!community_messages_sender_id_fkey(id,username,avatar_url))
+  reply_to_message:community_messages!reply_to_message_id(id,body,message_type,offer_amount,media_url,media_mime_type,media_file_name,media_size_bytes,sender_id,sender:users!community_messages_sender_id_fkey(id,username,avatar_url))
 `;
 
 export async function getMessages(
@@ -670,6 +670,46 @@ export async function getMessages(
 
   if (error) throw createHttpError(500, error.message);
   return (data || []).reverse();
+}
+
+export async function searchMessages(userId: string, conversationId: string, search: string, limit = 50) {
+  await assertParticipant(userId, conversationId);
+  const term = String(search || "").trim();
+  if (term.length < 2) return [];
+  const { data, error } = await supabaseAdmin.from("community_messages")
+    .select(messageSelect)
+    .eq("conversation_id", conversationId)
+    .ilike("body", `%${term.replace(/[\\%_]/g, "")}%`)
+    .order("created_at", { ascending: false })
+    .limit(Math.min(Math.max(Number(limit) || 50, 1), 100));
+  if (error) throw createHttpError(500, error.message);
+  return data || [];
+}
+
+const SHARED_URL_PATTERN = /https?:\/\/[^\s<>()]+/gi;
+const DOCUMENT_PATTERN = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip|rar)(?:[?#].*)?$/i;
+
+export async function getSharedContent(userId: string, conversationId: string) {
+  await assertParticipant(userId, conversationId);
+  const { data, error } = await supabaseAdmin.from("community_messages")
+    .select("id,body,message_type,media_url,media_size_bytes,media_mime_type,media_file_name,created_at,sender_id")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw createHttpError(500, error.message);
+  const media: any[] = [], links: any[] = [], docs: any[] = [];
+  for (const message of data || []) {
+    if (message.media_url) {
+      const item = { id: message.id, url: message.media_url, name: message.media_file_name, mimeType: message.media_mime_type, createdAt: message.created_at, senderId: message.sender_id, sizeBytes: Number(message.media_size_bytes || 0) };
+      const isVisual = String(message.media_mime_type || "").startsWith("image/") || String(message.media_mime_type || "").startsWith("video/");
+      ((!isVisual && Boolean(message.media_mime_type)) || DOCUMENT_PATTERN.test(message.media_url) ? docs : media).push(item);
+    }
+    (String(message.body || "").match(SHARED_URL_PATTERN) || []).forEach((url, index) => {
+      const item = { id: `${message.id}:${index}`, messageId: message.id, url, createdAt: message.created_at, senderId: message.sender_id, sizeBytes: 0 };
+      (DOCUMENT_PATTERN.test(url) ? docs : links).push(item);
+    });
+  }
+  return { media, links, docs, summary: { mediaCount: media.length, linkCount: links.length, docCount: docs.length, totalSizeBytes: [...media, ...docs].reduce((sum, item) => sum + item.sizeBytes, 0) } };
 }
 
 export async function sendMessage(
@@ -706,6 +746,9 @@ export async function sendMessage(
     body: body || null,
     message_type: offerAmount !== null ? "offer" : mediaUrl ? "media" : "text",
     media_url: mediaUrl || null,
+    media_size_bytes: Math.max(0, Number(input.mediaSizeBytes || 0)),
+    media_mime_type: input.mediaMimeType?.slice(0, 150) || null,
+    media_file_name: input.mediaFileName?.slice(0, 255) || null,
     reply_to_message_id: input.replyToMessageId || null,
     client_message_id: input.clientMessageId || null,
     offer_amount: offerAmount,
@@ -770,6 +813,9 @@ export async function enqueueMessage(
   const payload = {
     body: body || undefined,
     mediaUrl: mediaUrl || undefined,
+    mediaSizeBytes: Math.max(0, Number(input.mediaSizeBytes || 0)),
+    mediaMimeType: input.mediaMimeType,
+    mediaFileName: input.mediaFileName,
     offerAmount,
     replyToMessageId: input.replyToMessageId,
     clientMessageId: key,

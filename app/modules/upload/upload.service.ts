@@ -23,3 +23,13 @@ export const uploadToCloudinary = async (
     throw new Error("Cloudinary upload failed: " + error.message);
   }
 };
+
+export const uploadChatAttachment = async (file: Express.Multer.File): Promise<string> => {
+  const result = await cloudinary.uploader.upload(file.path, {
+    folder: "chat-attachments",
+    resource_type: "auto",
+    use_filename: true,
+    unique_filename: true,
+  });
+  return result.secure_url;
+};

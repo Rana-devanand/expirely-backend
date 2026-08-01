@@ -1,11 +1,11 @@
 import { supabase } from "../../config/supabase";
 import { supabaseAdmin } from "../../common/service/supabase.admin";
 import bcrypt from "bcryptjs";
-import { createUserTokens } from "../../common/service/passport-jwt.service";
+import { createUserTokens, verifyToken } from "../../common/service/passport-jwt.service";
 import { sendEmail, sendRawEmail } from "../../common/service/email.service";
 import createHttpError from "http-errors";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your_fallback_secret";
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretjwtkey123";
 const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export class UserService {
@@ -106,8 +106,6 @@ export class UserService {
   async refreshToken(token: string) {
     // ... existing logic ...
     try {
-      const { verifyToken, createUserTokens } =
-        await import("../../common/service/passport-jwt.service");
       const decoded: any = verifyToken(token);
 
       const { data: user, error } = await supabase
@@ -147,8 +145,6 @@ export class UserService {
   async me(refreshToken: string) {
     // ... existing me logic ...
     try {
-      const { verifyToken, createUserTokens } =
-        await import("../../common/service/passport-jwt.service");
       const decoded: any = verifyToken(refreshToken);
 
       let { data: user, error } = await supabase
@@ -306,8 +302,6 @@ export class UserService {
         user = updatedUser;
       }
 
-      const { createUserTokens } =
-        await import("../../common/service/passport-jwt.service");
       const authResult = createUserTokens(user);
 
       await supabase
