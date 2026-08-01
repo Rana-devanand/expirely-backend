@@ -2,6 +2,7 @@ import { Server as HttpServer } from "http";
 import { Server } from "socket.io";
 import { verifyToken } from "../../common/service/passport-jwt.service";
 import * as communityService from "./community.service";
+import { supabaseAdmin } from "../../common/service/supabase.admin";
 
 export function initializeCommunitySocket(server: HttpServer) {
   const io = new Server(server, {
