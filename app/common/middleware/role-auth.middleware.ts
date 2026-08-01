@@ -18,17 +18,10 @@ export const roleAuth = (roles: Role[], publicRoutes: string[] = []) =>
         return;
       }
       const authHeader = req.headers.authorization;
-      console.log("Auth Header:", authHeader);
-
       let token = "";
       if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
         token = authHeader.substring(7).trim();
       }
-
-      console.log(
-        "Extracted Token:",
-        token ? `${token.substring(0, 10)}...` : "NONE",
-      );
 
       if (!token || token === "undefined" || token === "null") {
         throw createHttpError(401, {
@@ -36,11 +29,12 @@ export const roleAuth = (roles: Role[], publicRoutes: string[] = []) =>
         });
       }
       try {
-        console.log("Verifying token...");
         const { verifyToken } = await import("../service/passport-jwt.service");
-        const decodedUser = verifyToken(token);
+        const decodedUser = verifyToken(token) as any;
+        if (decodedUser.type !== "access") {
+          throw new Error("Invalid access token type");
+        }
         req.user = decodedUser as IUser;
-        console.log("Token verified. User:", req.user.email);
       } catch (error: any) {
         console.error("JWT Verify Error:", error.message);
         if (error.message === "jwt expired") {
@@ -51,8 +45,9 @@ export const roleAuth = (roles: Role[], publicRoutes: string[] = []) =>
             },
           });
         }
-        throw createHttpError(400, {
-          message: error.message,
+        throw createHttpError(401, {
+          message: "Invalid access token",
+          data: { type: "ACCESS_TOKEN_INVALID" },
         });
       }
       const user = req.user as IUser;

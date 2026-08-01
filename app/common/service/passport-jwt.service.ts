@@ -5,6 +5,13 @@ import passport from "passport";
 import { ExtractJwt, Strategy } from "passport-jwt";
 import { Strategy as LocalStrategy } from "passport-local";
 import { supabaseAdmin } from "./supabase.admin";
+import crypto from "node:crypto";
+
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error("JWT_SECRET is required");
+  return secret;
+};
 
 export const isValidPassword = async function (
   value: string,
@@ -42,7 +49,7 @@ export const initPassport = () => {
   passport.use(
     new Strategy(
       {
-        secretOrKey: process.env.JWT_SECRET || "your_fallback_secret",
+        secretOrKey: getJwtSecret(),
         jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       },
       async (payload: any, done) => {
@@ -110,24 +117,30 @@ export const initPassport = () => {
   );
 };
 
-export const createUserTokens = (user: any) => {
-  const jwtSecret = process.env.JWT_SECRET || "your_fallback_secret";
+export const createUserTokens = (user: any, sessionId = crypto.randomUUID()) => {
+  const jwtSecret = getJwtSecret();
 
   // Create payload for JWT
   const payload = {
     id: user.id,
     email: user.email,
     role: user.role,
+    sid: sessionId,
+    type: "access",
   };
 
   const accessToken = jwt.sign(payload, jwtSecret, {
-    expiresIn: (process.env.ACCESS_TOKEN_EXPIRY ||
-      "36500d") as jwt.SignOptions["expiresIn"],
+    expiresIn: (process.env.ACCESS_TOKEN_EXPIRY || "15m") as jwt.SignOptions["expiresIn"],
+    issuer: "expirely-api",
+    audience: "expirely-mobile",
+    jwtid: crypto.randomUUID(),
   });
 
-  const refreshToken = jwt.sign({ id: user.id }, jwtSecret, {
-    expiresIn: (process.env.REFRESH_TOKEN_EXPIRY ||
-      "36500d") as jwt.SignOptions["expiresIn"],
+  const refreshToken = jwt.sign({ id: user.id, sub: user.id, sid: sessionId, type: "refresh" }, jwtSecret, {
+    expiresIn: (process.env.REFRESH_TOKEN_EXPIRY || "30d") as jwt.SignOptions["expiresIn"],
+    issuer: "expirely-api",
+    audience: "expirely-mobile",
+    jwtid: crypto.randomUUID(),
   });
 
   // Ensure sensitive data is removed
@@ -142,6 +155,7 @@ export const createUserTokens = (user: any) => {
     user: safeUser,
     accessToken,
     refreshToken,
+    sessionId,
   };
 };
 
@@ -153,7 +167,14 @@ export const decodeToken = (token: string) => {
 };
 
 export const verifyToken = (token: string) => {
-  const jwtSecret = process.env.JWT_SECRET || "your_fallback_secret";
-  const decode = jwt.verify(token, jwtSecret);
+  const decode = jwt.verify(token, getJwtSecret(), {
+    issuer: "expirely-api",
+    audience: "expirely-mobile",
+  });
   return decode;
 };
+
+export const hashToken = (token: string) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
+export const tokenFingerprint = (token: string) => hashToken(token).slice(0, 12);
