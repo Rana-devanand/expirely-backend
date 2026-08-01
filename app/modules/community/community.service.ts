@@ -831,24 +831,6 @@ export async function markMessageDelivered(messageId: string) {
   return data;
 }
 
-export async function confirmMessageDelivered(userId: string, messageId: string) {
-  const { data: message, error: messageError } = await supabaseAdmin
-    .from("community_messages")
-    .select("id,conversation_id,sender_id,delivered_at,seen_at")
-    .eq("id", messageId)
-    .maybeSingle();
-  if (messageError) throw createHttpError(500, messageError.message);
-  if (!message) throw createHttpError(404, "Message not found");
-
-  await assertParticipant(userId, message.conversation_id);
-  if (message.sender_id === userId || message.delivered_at) return message;
-
-  const delivered = await markMessageDelivered(message.id);
-  return delivered
-    ? { ...message, ...delivered }
-    : message;
-}
-
 export async function markConversationSeen(userId: string, conversationId: string) {
   const conversation = await assertParticipant(userId, conversationId);
   const timestamp = new Date().toISOString();
@@ -962,16 +944,6 @@ export async function sendCommunityMessagePush(
       channelId: "community-messages",
       tag: chatTag,
       collapseKey: chatTag,
-      onInvalidToken: async () => {
-        const { error: clearError } = await supabaseAdmin
-          .from("users")
-          .update({ fcm_token: null, updated_at: new Date().toISOString() })
-          .eq("id", recipient.id)
-          .eq("fcm_token", recipient.fcm_token);
-        if (clearError) {
-          console.error("[FCM] Failed to clear stale community token:", clearError.message);
-        }
-      },
     },
   );
 }

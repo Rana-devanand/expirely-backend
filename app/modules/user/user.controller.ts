@@ -178,7 +178,6 @@ export class UserController {
     } catch (error: any) {
       res.status(401).json({
         success: false,
-        error_code: error.code || "REFRESH_TOKEN_INVALID",
         message: error.message || "Invalid refresh token",
       });
     }
@@ -191,7 +190,7 @@ export class UserController {
       if (!userId) {
         throw new Error("User not authenticated");
       }
-      const result = await userService.logout(userId, user?.sid);
+      const result = await userService.logout(userId);
       res.status(200).json(result);
     } catch (error: any) {
       res.status(400).json({
@@ -216,7 +215,6 @@ export class UserController {
     } catch (error: any) {
       res.status(401).json({
         success: false,
-        error_code: error.code || "REFRESH_TOKEN_INVALID",
         message: error.message || "Session expired",
       });
     }

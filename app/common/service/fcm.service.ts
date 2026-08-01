@@ -44,7 +44,6 @@ export const sendPushNotification = async (
     channelId?: string;
     tag?: string;
     collapseKey?: string;
-    onInvalidToken?: () => void | Promise<void>;
   },
 ): Promise<boolean> => {
   if (!isInitialized) {
@@ -95,16 +94,6 @@ export const sendPushNotification = async (
     console.log(`✅ [FCM] Push sent successfully. Message ID: ${response}`);
     return true;
   } catch (err: any) {
-    const errorCode = String(err?.code || "");
-    const errorMessage = String(err?.message || "");
-    const invalidToken =
-      errorCode === "messaging/registration-token-not-registered" ||
-      errorCode === "messaging/invalid-registration-token" ||
-      /notregistered|registration token is not registered/i.test(errorMessage);
-    if (invalidToken) {
-      await options?.onInvalidToken?.();
-      console.warn("[FCM] Removed an invalid registration token");
-    }
     // If token is invalid/expired, log and return false (don't crash worker)
     console.error(`❌ [FCM] Failed to send push to token: ${err.message}`);
     return false;

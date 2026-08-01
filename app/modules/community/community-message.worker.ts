@@ -78,6 +78,11 @@ export class CommunityMessageWorker {
         (socket) =>
           socket.data.activeCommunityConversation === job.conversation_id,
       );
+      if (recipientSockets.length > 0) {
+        const delivered = await communityService.markMessageDelivered(message.id);
+        if (delivered) message = { ...message, ...delivered };
+      }
+
       const { error: completionError } = await supabaseAdmin
         .from("community_message_queue")
         .update({
