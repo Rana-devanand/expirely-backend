@@ -133,7 +133,7 @@ export const reportService = {
       </div>
     `;
 
-    await sendEmailWithAttachment({
+    const delivery = await sendEmailWithAttachment({
       to: user.email,
       subject: `Expirely Inventory Audit Report - ${new Date().toLocaleDateString()}`,
       html: emailHtml,
@@ -145,6 +145,6 @@ export const reportService = {
       ]
     });
     
-    return { success: true, email: user.email };
+    return { success: true, email: user.email, delivery };
   }
 };

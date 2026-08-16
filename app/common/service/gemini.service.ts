@@ -15,6 +15,11 @@ class GeminiService {
   private readonly model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
   private readonly endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
 
+  async generateStructuredJson<T = unknown>(prompt: string): Promise<T> {
+    if (!this.apiKey) throw new Error("GEMINI_API_KEY is not configured");
+    return this.generateJson<T>(prompt);
+  }
+
   async generateNotificationMessage(action: string, context: any) {
     if (!this.apiKey) {
       return this.getFallbackMessage(action, context);

@@ -14,6 +14,7 @@ import usageRoutes from "./modules/usage/usage.routes";
 import recurringRoutes from "./modules/recurring/recurring.routes";
 import householdRoutes from "./modules/household/household.routes";
 import communityRoutes from "./modules/community/community.routes";
+import ocrRoutes from "./modules/ocr/ocr.routes";
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use("/analytics", usageRoutes);
 router.use("/recurring-products", recurringRoutes);
 router.use("/households", householdRoutes);
 router.use("/community", communityRoutes);
+router.use("/ocr", ocrRoutes);
 
 export default router;
