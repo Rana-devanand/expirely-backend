@@ -35,6 +35,8 @@ router.patch("/conversations/:id/settings", controller.updateChatSettings);
 router.post("/conversations/:id/messages", controller.send);
 router.delete("/conversations/:id/messages", controller.clearChat);
 router.post("/message-queue/:jobId/retry", controller.retryMessage);
+router.patch("/messages/:messageId",controller.editMessage);
+router.delete("/messages/:messageId",controller.deleteMessage);
 router.post("/conversations/:id/seen", controller.seen);
 router.patch("/offers/:messageId", controller.offer);
 router.post("/ai-advice", controller.aiAdvice);

@@ -50,6 +50,10 @@ const mapRowToProduct = (row: any): any => {
     status: row.status,
     color: row.color,
     qty: row.quantity,
+    productWeight: row.product_weight,
+    weightUnit: row.weight_unit,
+    price: row.price,
+    currency: row.currency,
     progress: row.progress,
     notes: row.notes,
     ingredients: row.ingredients,
@@ -92,6 +96,10 @@ export const createProduct = async (userId: string, data: ICreateProduct) => {
     status: status || "good",
     color: data.color || null,
     quantity: data.quantity || (data as any).qty || 1,
+    product_weight: data.product_weight || (data as any).productWeight || null,
+    weight_unit: data.weight_unit || (data as any).weightUnit || null,
+    price: data.price ?? null,
+    currency: data.currency || null,
     progress: data.progress || null,
     notes: data.notes || null,
     ingredients: data.ingredients || null,
@@ -151,6 +159,10 @@ export const updateProduct = async (
   if (data.color !== undefined) dbData.color = data.color;
   if (data.quantity !== undefined || (data as any).qty !== undefined)
     dbData.quantity = data.quantity || (data as any).qty;
+  if(data.product_weight!==undefined||(data as any).productWeight!==undefined)dbData.product_weight=data.product_weight||(data as any).productWeight||null;
+  if(data.weight_unit!==undefined||(data as any).weightUnit!==undefined)dbData.weight_unit=data.weight_unit||(data as any).weightUnit||null;
+  if(data.price!==undefined)dbData.price=data.price;
+  if(data.currency!==undefined)dbData.currency=data.currency;
   if (data.progress !== undefined) dbData.progress = data.progress;
   if (data.notes !== undefined) dbData.notes = data.notes;
   if (data.ingredients !== undefined) dbData.ingredients = data.ingredients;

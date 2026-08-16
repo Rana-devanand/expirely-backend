@@ -108,6 +108,7 @@ setupApp();
 if (!isVercelRuntime) {
   const server = http.createServer(app);
   const communityIo = initializeCommunitySocket(server);
+  app.set("communityIo",communityIo);
   if (process.env.ENABLE_COMMUNITY_MESSAGE_QUEUE !== "false") {
     void communityMessageWorker.start(communityIo);
   }

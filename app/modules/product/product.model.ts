@@ -11,6 +11,7 @@ export interface IProduct {
   status?: "good" | "warning" | "expired";
   color?: string;
   quantity: number;
+  product_weight?: number; weight_unit?: "g"|"kg"|"ml"|"l"|"piece"; price?: number; currency?: string;
   progress?: number;
   notes?: string;
   ingredients?: string;
@@ -34,6 +35,7 @@ export interface ICreateProduct {
   color?: string;
   quantity?: number;
   qty?: number;
+  product_weight?: number; weight_unit?: "g"|"kg"|"ml"|"l"|"piece"; price?: number; currency?: string;
   progress?: number;
   notes?: string;
   ingredients?: string;
@@ -55,6 +57,7 @@ export interface IUpdateProduct {
   color?: string;
   quantity?: number;
   qty?: number;
+  product_weight?: number; weight_unit?: "g"|"kg"|"ml"|"l"|"piece"; price?: number; currency?: string;
   progress?: number;
   notes?: string;
   ingredients?: string;

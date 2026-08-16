@@ -189,13 +189,24 @@ export function initializeCommunitySocket(server: HttpServer) {
       }
     });
 
-    socket.on("typing:set", (payload: { conversationId: string; isTyping: boolean }) => {
-      if (!socket.data.communityConversations.has(payload.conversationId)) return;
-      socket.to(`conversation:${payload.conversationId}`).emit("typing:changed", {
-        conversationId: payload.conversationId,
-        userId: authenticatedUserId,
-        isTyping: Boolean(payload.isTyping),
-      });
+    socket.on("typing:set", async (payload: { conversationId: string; isTyping: boolean }) => {
+      const conversationId = String(payload?.conversationId || "");
+      if (!conversationId) return;
+      try {
+        // Recover safely when a reconnect cleared server-side room membership.
+        if (!socket.data.communityConversations.has(conversationId)) {
+          await communityService.assertParticipant(authenticatedUserId, conversationId);
+          await socket.join(`conversation:${conversationId}`);
+          socket.data.communityConversations.add(conversationId);
+        }
+        socket.to(`conversation:${conversationId}`).emit("typing:changed", {
+          conversationId,
+          userId: authenticatedUserId,
+          isTyping: Boolean(payload.isTyping),
+        });
+      } catch (error: any) {
+        console.warn("[Community Typing] Event rejected:", error.message);
+      }
     });
 
     socket.on("conversation:seen", async (conversationId: string) => {

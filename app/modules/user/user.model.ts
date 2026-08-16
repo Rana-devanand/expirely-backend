@@ -11,6 +11,7 @@ export interface IUser {
   avatar_url?: string;
   auth_provider: AuthProvider;
   role: Role;
+  account_intent?: "personal" | "vendor";
   status: UserStatus;
   is_verified: boolean;
   daily_reminder_enabled?: boolean;
