@@ -540,11 +540,28 @@ export class UserController {
   async saveLocation(req: Request, res: Response) {
     try {
       const user = req.user as any;
-      const { country, locality } = req.body;
+      const { country, locality, latitude, longitude, accuracyM } = req.body;
       if (!country || !locality) {
         throw new Error("Country and locality are required.");
       }
-      const data = await userService.saveLocation(user.id, country, locality);
+      const hasCoordinates = latitude !== undefined || longitude !== undefined;
+      if (hasCoordinates &&
+        (!Number.isFinite(Number(latitude)) || Number(latitude) < -90 || Number(latitude) > 90 ||
+         !Number.isFinite(Number(longitude)) || Number(longitude) < -180 || Number(longitude) > 180)) {
+        throw new Error("A valid latitude and longitude pair is required.");
+      }
+      if (accuracyM !== undefined && (!Number.isFinite(Number(accuracyM)) || Number(accuracyM) < 0)) {
+        throw new Error("Location accuracy must be a non-negative number.");
+      }
+      const data = await userService.saveLocation(
+        user.id,
+        String(country).trim(),
+        String(locality).trim(),
+        hasCoordinates ? {
+          latitude: Number(latitude), longitude: Number(longitude),
+          accuracyM: accuracyM === undefined ? undefined : Number(accuracyM),
+        } : undefined,
+      );
       res.status(200).json({ success: true, data });
     } catch (error: any) {
       res.status(400).json({

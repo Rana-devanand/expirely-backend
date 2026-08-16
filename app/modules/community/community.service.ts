@@ -529,7 +529,7 @@ export async function getConversations(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("community_conversations")
     .select(
-      "id,listing_id,buyer_id,seller_id,updated_at,last_message_text,last_message_type,last_message_at,last_message_sender_id,buyer_unread_count,seller_unread_count,listing:community_listings(id,title,price,currency,image_urls,status),buyer:users!community_conversations_buyer_id_fkey(id,username,avatar_url),seller:users!community_conversations_seller_id_fkey(id,username,avatar_url)",
+      "id,context_type,listing_id,store_id,buyer_id,seller_id,updated_at,last_message_text,last_message_type,last_message_at,last_message_sender_id,buyer_unread_count,seller_unread_count,listing:community_listings(id,title,price,currency,image_urls,status),store:vendor_stores(id,name,category),buyer:users!community_conversations_buyer_id_fkey(id,username,avatar_url),seller:users!community_conversations_seller_id_fkey(id,username,avatar_url)",
     )
     .or(`buyer_id.eq.${userId},seller_id.eq.${userId}`)
     .order("updated_at", { ascending: false })
@@ -644,8 +644,12 @@ export async function updateConversationSettings(
 const messageSelect = `
   *,
   sender:users!community_messages_sender_id_fkey(id,username,avatar_url),
-  reply_to_message:community_messages!reply_to_message_id(id,body,message_type,offer_amount,media_url,media_mime_type,media_file_name,media_size_bytes,sender_id,sender:users!community_messages_sender_id_fkey(id,username,avatar_url))
+  reply_to_message:community_messages!reply_to_message_id(id,body,message_type,offer_amount,media_url,media_mime_type,media_file_name,media_size_bytes,sender_id,deleted_at,sender:users!community_messages_sender_id_fkey(id,username,avatar_url))
 `;
+
+export async function editMessage(userId:string,messageId:string,bodyValue:unknown){const body=String(bodyValue||"").trim();if(!body||body.length>5000)throw createHttpError(400,"Enter a valid message");const{data:existing}=await supabaseAdmin.from("community_messages").select("id,conversation_id,sender_id,message_type,deleted_at,created_at").eq("id",messageId).maybeSingle();if(!existing)throw createHttpError(404,"Message not found");await assertParticipant(userId,existing.conversation_id);if(existing.sender_id!==userId)throw createHttpError(403,"You can only edit your own messages");if(existing.message_type!=="text"||existing.deleted_at)throw createHttpError(409,"This message cannot be edited");const{data,error}=await supabaseAdmin.from("community_messages").update({body,edited_at:new Date().toISOString()}).eq("id",messageId).select(messageSelect).single();if(error)throw createHttpError(500,"Unable to edit message");await supabaseAdmin.from("community_conversations").update({last_message_text:body,updated_at:new Date().toISOString()}).eq("id",existing.conversation_id).eq("last_message_at",existing.created_at);return data;}
+
+export async function deleteMessage(userId:string,messageId:string){const{data:existing}=await supabaseAdmin.from("community_messages").select("id,conversation_id,sender_id,deleted_at,created_at").eq("id",messageId).maybeSingle();if(!existing)throw createHttpError(404,"Message not found");await assertParticipant(userId,existing.conversation_id);if(existing.sender_id!==userId)throw createHttpError(403,"You can only delete your own messages");if(existing.deleted_at)return existing;const now=new Date().toISOString();const{data,error}=await supabaseAdmin.from("community_messages").update({body:"Message deleted",media_url:null,media_mime_type:null,media_file_name:null,media_size_bytes:0,offer_amount:null,offer_status:null,message_type:"system",deleted_at:now,edited_at:null}).eq("id",messageId).select(messageSelect).single();if(error){console.error("[Community] Delete message failed",{messageId,code:error.code,message:error.message,details:error.details});throw createHttpError(500,"Unable to delete message");}await supabaseAdmin.from("community_conversations").update({last_message_text:"Message deleted",last_message_type:"system",updated_at:now}).eq("id",existing.conversation_id).eq("last_message_at",existing.created_at);return data;}
 
 export async function getMessages(
   userId: string,
@@ -926,7 +930,7 @@ export async function sendCommunityMessagePush(
   const { data: conversation, error } = await supabaseAdmin
     .from("community_conversations")
     .select(
-      "buyer_id,seller_id,buyer_unread_count,seller_unread_count,listing:community_listings(id,title,price,currency,image_urls),buyer:users!community_conversations_buyer_id_fkey(id,username,avatar_url,fcm_token),seller:users!community_conversations_seller_id_fkey(id,username,avatar_url,fcm_token)",
+      "context_type,buyer_id,seller_id,buyer_unread_count,seller_unread_count,listing:community_listings(id,title,price,currency,image_urls),store:vendor_stores(id,name,category),buyer:users!community_conversations_buyer_id_fkey(id,username,avatar_url,fcm_token),seller:users!community_conversations_seller_id_fkey(id,username,avatar_url,fcm_token)",
     )
     .eq("id", conversationId)
     .single();
@@ -937,6 +941,7 @@ export async function sendCommunityMessagePush(
   const recipient: any =
     conversation.buyer_id === senderId ? conversation.seller : conversation.buyer;
   const listing: any = conversation.listing;
+  const store: any = conversation.store;
   if (!recipient?.fcm_token) return false;
 
   const recipientUnreadCount =
@@ -981,6 +986,7 @@ export async function sendCommunityMessagePush(
       : senderName;
 
   const imageUrl = sender?.avatar_url || listing?.image_urls?.[0] || "";
+  const contextTitle = store?.name || listing?.title || "Marketplace chat";
 
   await supabaseAdmin.from("notifications").insert({
     user_id: recipient.id,
@@ -1000,7 +1006,9 @@ export async function sendCommunityMessagePush(
       type: "COMMUNITY_MESSAGE",
       conversationId,
       listingId: listing?.id || "",
-      listingTitle: listing?.title || "Community product",
+      listingTitle: contextTitle,
+      contextType: conversation.context_type || "community_listing",
+      storeId: store?.id || "",
       price: String(listing?.price || 0),
       role: conversation.seller_id === recipient.id ? "seller" : "buyer",
       senderId,

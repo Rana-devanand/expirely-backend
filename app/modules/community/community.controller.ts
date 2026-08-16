@@ -96,6 +96,8 @@ export const retryMessage = asyncHandler(async (req: Request, res: Response) => 
     ),
   );
 });
+export const editMessage=asyncHandler(async(req:Request,res:Response)=>{const message=await service.editMessage(userId(req),String(req.params.messageId),req.body?.body);const io=req.app.get("communityIo");io?.to(`conversation:${message.conversation_id}`).emit("message:updated",message);res.send(createResponse(message,"Message edited"));});
+export const deleteMessage=asyncHandler(async(req:Request,res:Response)=>{const message=await service.deleteMessage(userId(req),String(req.params.messageId));const io=req.app.get("communityIo");io?.to(`conversation:${message.conversation_id}`).emit("message:updated",message);res.send(createResponse(message,"Message deleted"));});
 export const clearChat = asyncHandler(async (req: Request, res: Response) => {
   res.send(
     createResponse(

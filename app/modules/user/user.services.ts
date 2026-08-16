@@ -11,6 +11,7 @@ const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
 export class UserService {
   async signUp(userData: any) {
     const { email, password, username } = userData;
+    const accountIntent = userData.accountIntent === "vendor" ? "vendor" : "personal";
 
     // 1. Check if user already exists in Supabase
     const { data: existingUser } = await supabase
@@ -36,6 +37,7 @@ export class UserService {
           password: hashedPassword,
           auth_provider: "local",
           role: "USER",
+          account_intent: accountIntent,
           status: "active",
           daily_reminder_enabled: false,
           daily_reminder_timezone: "UTC",
@@ -466,6 +468,17 @@ export class UserService {
   }
 
   async deleteAccount(userId: string) {
+    // Keep this first: once marketplace records exist, their references must be
+    // cleaned transactionally before the shared user identity is removed.
+    const { error: vendorCleanupError } = await supabaseAdmin.rpc(
+      "cleanup_vendor_user",
+      { deleting_user_id: userId },
+    );
+    // Allows backend deployment before the additive migration is applied. Any
+    // real cleanup failure still blocks deletion instead of leaving partial data.
+    if (vendorCleanupError && vendorCleanupError.code !== "PGRST202") {
+      throw vendorCleanupError;
+    }
     // 1. Delete user's products
     await supabase.from("products").delete().eq("user_id", userId);
 
@@ -772,13 +785,24 @@ export class UserService {
     return { success: true, message: "Unsubscribed successfully." };
   }
 
-  async saveLocation(userId: string, country: string, locality: string) {
+  async saveLocation(
+    userId: string,
+    country: string,
+    locality: string,
+    precise?: { latitude: number; longitude: number; accuracyM?: number },
+  ) {
     const { data, error } = await supabaseAdmin
       .from("user_locations")
       .upsert({
         user_id: userId,
         country,
         locality,
+        ...(precise ? {
+          latitude: precise.latitude,
+          longitude: precise.longitude,
+          accuracy_m: precise.accuracyM ?? null,
+          last_location_at: new Date().toISOString(),
+        } : {}),
         updated_at: new Date().toISOString(),
       })
       .select()
@@ -791,7 +815,7 @@ export class UserService {
   async getLocation(userId: string) {
     const { data, error } = await supabaseAdmin
       .from("user_locations")
-      .select("country, locality")
+      .select("country, locality, latitude, longitude, accuracy_m, last_location_at")
       .eq("user_id", userId)
       .maybeSingle();
 
