@@ -36,3 +36,4 @@ router.use("/community", communityRoutes);
 router.use("/vendor", vendorRoutes);
 
 export default router;
+ 
