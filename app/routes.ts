@@ -33,7 +33,6 @@ router.use("/analytics", usageRoutes);
 router.use("/recurring-products", recurringRoutes);
 router.use("/households", householdRoutes);
 router.use("/community", communityRoutes);
-// router.use("/ocr", ocrRoutes);
 router.use("/vendor", vendorRoutes);
 
 export default router;
